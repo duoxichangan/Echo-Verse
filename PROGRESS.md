@@ -9,10 +9,10 @@
 ## 当前状态
 
 **已完成：批次 A / M0「工程地基可运行」** — 提交 `65dda0d`
-**进行中：批次 B / MVP 核心** — 已落地 `CHAT-03` 输出后处理、`MEM-01/03` 记忆读取与衰减检索
+**进行中：批次 B / MVP 核心** — 「发一句→分条回复」对话闭环已跑通（CHAT-01/02/03 + 记忆/画像接入）
 
 - `flutter analyze`：无问题
-- `flutter test`：全 26 项通过（MockAdapter 2 + Settings DB 2 + CHAT-03 10 + 记忆线 12）
+- `flutter test`：全 31 项通过（M0 基础 4 + CHAT-03 10 + 记忆线 12 + 对话闭环 5）
 
 ---
 
@@ -71,16 +71,33 @@
 - [x] DI 注册 `memoryServiceProvider`
 - [x] 决策：遗忘曲线选**指数衰减**、检索选**关键词+时间**（用户确认，记忆求「像真人」）
 
+### 对话闭环 CHAT-01/02/03（「发一句→分条回复」跑通）
+- [x] `lib/data/repos/drift_persona_repo.dart`：PERSONA-03 存储部分，personas CRUD +
+      `restoreInitial`（R6）+ `create`（建号用）
+- [x] `lib/prompts/chat_prompts.dart`：§8.2 对话 system 模板（L2 语气 / `‹SEP›` 分条 /
+      `[表情:label]` 限清单 / `[记住:x]` / 绝不承认 AI），变量具名注入
+- [x] `lib/app/chat/context_assembler_impl.dart`（CHAT-01）：组装 system（画像 + 常驻记忆 +
+      表情清单）与 messages（最近 N 条原文），记忆块预算交 `readResident` 内部裁剪
+- [x] `lib/domain/contracts/chat_engine.dart` + `lib/app/chat/chat_engine_impl.dart`（CHAT-02）：
+      落库 user → 取最近原文 → assemble → ModelAdapter.chat → CHAT-03 process →
+      按 delayMs 逐条 yield 并落库 persona 连发消息；`honorDelays` 开关便于测试
+- [x] DI 注册 `personaRepoProvider` / `contextAssemblerProvider` / `chatEngineProvider`
+- [x] 5 项闭环单测（分条流 / 表情渲染 / 双方落库 / 多轮历史串联 / 不阻塞），全程 MockAdapter 离线
+
 ---
 
 ## 待办（批次 B / MVP 核心 · M1–M3，尚未开工）
 
 > 多条线可并行，彼此只靠已冻结的契约 / Mock 耦合。
 
-- **对话线**：~~`CHAT-03` 输出后处理~~ ✅ → `CHAT-01` 上下文组装 → `CHAT-02` 对话生成
-- **人格线**：`PERSONA-01` 微信 txt 解析 → `PERSONA-02` 人格提炼 → `PERSONA-03` 画像存储
+- **对话线**：~~`CHAT-03`~~ ✅ ~~`CHAT-01` 上下文组装~~ ✅ ~~`CHAT-02` 对话生成~~ ✅ → 接真 key 端到端验证
+- **人格线**：`PERSONA-01` 微信 txt 解析 → `PERSONA-02` 人格提炼 → ~~`PERSONA-03` 画像存储~~ ✅（编辑器 UI 待 M4）
 - **记忆线**：~~`MEM-01` 读取 / `MEM-03` 衰减检索~~ ✅ → `MEM-02` 写入提炼（依赖 ModelAdapter + OpenLoopEngine）
 - **界面线**：`UI-01` 聊天页 / `UI-02` 建号向导（可用 mock 数据先做视觉）
+
+**当前断点**：对话引擎已能跑出分条回复，但**没有界面**也**还不会自动写记忆**。
+下一步二选一：① `UI-01` 聊天页（接 `chatEngineProvider`，能真正"打字-发送-看回复"）；
+② `MEM-02` 记忆写入（让数字人聊着聊着自动记住事，闭合"记忆像真人"）。
 
 **推荐起步点**：`CHAT-03`（纯函数、不依赖 LLM、单测友好）+ `PERSONA-01`（靠 MockAdapter 可离线验证）。
 

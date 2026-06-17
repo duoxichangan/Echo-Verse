@@ -3,16 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../adapter/mock_adapter.dart';
 import '../../adapter/openai_adapter.dart';
 import '../../data/db/database.dart';
+import '../../data/repos/drift_persona_repo.dart';
 import '../../data/repos/drift_settings_repo.dart';
 import '../../data/repos/in_memory_sticker_repo.dart';
+import '../../domain/contracts/chat_engine.dart';
+import '../../domain/contracts/context_assembler.dart';
 import '../../domain/contracts/memory_service.dart';
 import '../../domain/contracts/model_adapter.dart';
 import '../../domain/contracts/output_post_processor.dart';
+import '../../domain/contracts/persona_repo.dart';
 import '../../domain/contracts/secret_store.dart';
 import '../../domain/contracts/settings_repo.dart';
 import '../../domain/contracts/sticker_repo.dart';
 import '../../domain/models/app_settings.dart';
 import '../../platform/secure_secret_store.dart';
+import '../chat/chat_engine_impl.dart';
+import '../chat/context_assembler_impl.dart';
 import '../chat/output_post_processor_impl.dart';
 import '../memory/drift_memory_service.dart';
 
@@ -78,3 +84,28 @@ final outputPostProcessorProvider = Provider<OutputPostProcessor>(
 final memoryServiceProvider = Provider<MemoryService>(
   (ref) => DriftMemoryService(ref.watch(databaseProvider)),
 );
+
+/// 画像仓储（手册 PERSONA-03 存储部分）。
+final personaRepoProvider = Provider<PersonaRepo>(
+  (ref) => DriftPersonaRepo(ref.watch(databaseProvider)),
+);
+
+/// 上下文组装（手册 CHAT-01）。组合画像 + 记忆 + 表情清单。
+final contextAssemblerProvider = Provider<ContextAssembler>(
+  (ref) => ContextAssemblerImpl(
+    personaRepo: ref.watch(personaRepoProvider),
+    memoryService: ref.watch(memoryServiceProvider),
+    stickerRepo: ref.watch(stickerRepoProvider),
+  ),
+);
+
+/// 对话引擎（手册 CHAT-02）。依赖 modelAdapter，故为异步 provider。
+final chatEngineProvider = FutureProvider<ChatEngine>((ref) async {
+  final adapter = await ref.watch(modelAdapterProvider.future);
+  return ChatEngineImpl(
+    db: ref.watch(databaseProvider),
+    assembler: ref.watch(contextAssemblerProvider),
+    adapter: adapter,
+    postProcessor: ref.watch(outputPostProcessorProvider),
+  );
+});
