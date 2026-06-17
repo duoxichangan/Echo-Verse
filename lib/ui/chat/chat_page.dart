@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/di/providers.dart';
 import '../../data/db/database.dart';
+import '../memory/memory_panel_page.dart';
+import '../persona/persona_editor_page.dart';
 import '../settings/settings_page.dart';
 import 'chat_bubble.dart';
 import 'wechat_theme.dart';
@@ -183,12 +185,32 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       ),
       centerTitle: true,
       actions: [
-        IconButton(
+        PopupMenuButton<String>(
           icon: const Icon(Icons.more_horiz),
           tooltip: '更多',
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const SettingsPage()),
-          ),
+          onSelected: (v) {
+            if (v == 'memory') {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => MemoryPanelPage(
+                  personaId: widget.personaId,
+                  personaName: widget.personaName,
+                ),
+              ));
+            } else if (v == 'persona') {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => PersonaEditorPage(personaId: widget.personaId),
+              ));
+            } else if (v == 'settings') {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
+              );
+            }
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'memory', child: Text('查看 TA 的记忆')),
+            PopupMenuItem(value: 'persona', child: Text('编辑人设')),
+            PopupMenuItem(value: 'settings', child: Text('设置')),
+          ],
         ),
       ],
     );

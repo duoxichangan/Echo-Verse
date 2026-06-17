@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../../data/db/database.dart';
@@ -5,6 +7,7 @@ import '../../domain/contracts/memory_service.dart';
 import '../../domain/contracts/model_adapter.dart';
 import '../../domain/models/chat_message.dart';
 import '../../domain/models/memory_extraction.dart';
+import '../../domain/models/memory_fact.dart';
 import '../../prompts/memory_prompts.dart';
 import '../persona/json_extract.dart';
 import 'salience.dart';
@@ -323,6 +326,65 @@ class DriftMemoryService implements MemoryService {
     // 简单 JSON 数组编码（unresolved 列存 JSON 列表）。
     final escaped = items.map((s) => '"${s.replaceAll('"', r'\"')}"');
     return '[${escaped.join(',')}]';
+  }
+
+  // ── MEM-04 记忆面板管理 ───────────────────────────────────
+
+  @override
+  Future<List<MemoryFact>> listFacts(int personaId) async {
+    final now = nowMs();
+    final rows = await topFacts(personaId, now: now);
+    return [
+      for (final f in rows)
+        MemoryFact(
+          id: f.id,
+          content: f.content,
+          importance: f.importance,
+          pinned: f.pinned,
+          lastReferencedAt: f.lastReferencedAt,
+          salience: Salience.score(
+            importance: f.importance,
+            lastReferencedAtMs: f.lastReferencedAt,
+            nowMs: now,
+            pinned: f.pinned,
+          ),
+        ),
+    ];
+  }
+
+  @override
+  Future<RelationshipSnapshot?> readRelationship(int personaId) async {
+    final r = await (db.select(db.relationshipStates)
+          ..where((t) => t.personaId.equals(personaId)))
+        .getSingleOrNull();
+    if (r == null) return null;
+    List<String> unresolved = const [];
+    try {
+      final decoded = jsonDecode(r.unresolved);
+      if (decoded is List) unresolved = decoded.map((e) => e.toString()).toList();
+    } catch (_) {/* 容错：坏 JSON 当空 */}
+    return RelationshipSnapshot(
+      mood: r.mood,
+      closeness: r.closeness,
+      unresolved: unresolved,
+    );
+  }
+
+  @override
+  Future<void> updateFactContent(int factId, String content) async {
+    await (db.update(db.facts)..where((f) => f.id.equals(factId)))
+        .write(FactsCompanion(content: Value(content)));
+  }
+
+  @override
+  Future<void> setFactPinned(int factId, bool pinned) async {
+    await (db.update(db.facts)..where((f) => f.id.equals(factId)))
+        .write(FactsCompanion(pinned: Value(pinned)));
+  }
+
+  @override
+  Future<void> deleteFact(int factId) async {
+    await (db.delete(db.facts)..where((f) => f.id.equals(factId))).go();
   }
 }
 

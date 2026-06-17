@@ -217,6 +217,32 @@ void main() {
       final facts = await db.select(db.facts).get();
       expect(facts.any((f) => f.content == '周末去爬山'), isTrue);
     });
+
+    test('MEM-04 listFacts 返回带显著度的事实', () async {
+      await addFact('高分', importance: 0.9);
+      await addFact('低分旧', importance: 0.2, lastRef: _now - 60 * _day);
+      final list = await mem.listFacts(1);
+      expect(list.length, 2);
+      // 已含显著度，高分在前
+      expect(list.first.content, '高分');
+      expect(list.first.salience, greaterThan(list.last.salience));
+    });
+
+    test('MEM-04 置顶/改/删', () async {
+      final id = await addFact('原始内容', importance: 0.5);
+
+      await mem.setFactPinned(id, true);
+      var list = await mem.listFacts(1);
+      expect(list.first.pinned, isTrue);
+
+      await mem.updateFactContent(id, '改后内容');
+      list = await mem.listFacts(1);
+      expect(list.first.content, '改后内容');
+
+      await mem.deleteFact(id);
+      list = await mem.listFacts(1);
+      expect(list, isEmpty);
+    });
   },
       skip: hasSqlite
           ? false
