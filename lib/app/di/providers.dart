@@ -5,6 +5,7 @@ import '../../adapter/openai_adapter.dart';
 import '../../data/db/database.dart';
 import '../../data/repos/drift_settings_repo.dart';
 import '../../data/repos/in_memory_sticker_repo.dart';
+import '../../domain/contracts/memory_service.dart';
 import '../../domain/contracts/model_adapter.dart';
 import '../../domain/contracts/output_post_processor.dart';
 import '../../domain/contracts/secret_store.dart';
@@ -13,6 +14,7 @@ import '../../domain/contracts/sticker_repo.dart';
 import '../../domain/models/app_settings.dart';
 import '../../platform/secure_secret_store.dart';
 import '../chat/output_post_processor_impl.dart';
+import '../memory/drift_memory_service.dart';
 
 /// 全局依赖注入总线（手册 INFRA-01）。
 /// 所有单例 / 工厂在此注册，UI 与应用层只通过契约类型消费。
@@ -70,4 +72,9 @@ final stickerRepoProvider = Provider<StickerRepo>(
 /// 输出后处理（手册 CHAT-03）。纯逻辑，仅依赖 [StickerRepo]。
 final outputPostProcessorProvider = Provider<OutputPostProcessor>(
   (ref) => OutputPostProcessorImpl(ref.watch(stickerRepoProvider)),
+);
+
+/// 记忆服务（手册 MEM-01 读取 / MEM-03 检索；MEM-02 写入待后续工单）。
+final memoryServiceProvider = Provider<MemoryService>(
+  (ref) => DriftMemoryService(ref.watch(databaseProvider)),
 );

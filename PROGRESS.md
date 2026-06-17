@@ -9,10 +9,10 @@
 ## 当前状态
 
 **已完成：批次 A / M0「工程地基可运行」** — 提交 `65dda0d`
-**进行中：批次 B / MVP 核心** — 已落地 `CHAT-03` 输出后处理
+**进行中：批次 B / MVP 核心** — 已落地 `CHAT-03` 输出后处理、`MEM-01/03` 记忆读取与衰减检索
 
 - `flutter analyze`：无问题
-- `flutter test`：全 14 项通过（MockAdapter 2 + Settings DB 2 + CHAT-03 10）
+- `flutter test`：全 26 项通过（MockAdapter 2 + Settings DB 2 + CHAT-03 10 + 记忆线 12）
 
 ---
 
@@ -60,6 +60,17 @@
 - [x] DI 注册 `stickerRepoProvider` / `outputPostProcessorProvider`
 - [x] 契约 `OutputPostProcessor.process` 增 `personaId`（表情查表需要）
 
+### MEM-01/03 记忆读取与衰减检索（记忆线，「像真人」核心）
+- [x] `lib/app/memory/salience.dart`：显著度纯函数 `importance × exp(-Δt/τ)`（艾宾浩斯式
+      指数衰减，τ 默认 14 天半衰期，pinned 跳过）。无时钟依赖，可独立单测
+- [x] `lib/app/memory/drift_memory_service.dart`：
+      - `readResident`：拼装 L1 摘要 + L3 关系 + 高显著 L2 事实，按字符近似预算从低到高裁剪
+      - `topFacts`：过滤 invalid / superseded，pinned 置顶，按显著度降序，截断到上限
+      - `search`：L5 关键词检索（中英分词 + `contains`，按命中词数→新近排序去重，无 embedding）
+      - `extract`（MEM-02）：依赖 ModelAdapter + OpenLoopEngine，留待后续工单，暂抛 UnimplementedError
+- [x] DI 注册 `memoryServiceProvider`
+- [x] 决策：遗忘曲线选**指数衰减**、检索选**关键词+时间**（用户确认，记忆求「像真人」）
+
 ---
 
 ## 待办（批次 B / MVP 核心 · M1–M3，尚未开工）
@@ -68,7 +79,7 @@
 
 - **对话线**：~~`CHAT-03` 输出后处理~~ ✅ → `CHAT-01` 上下文组装 → `CHAT-02` 对话生成
 - **人格线**：`PERSONA-01` 微信 txt 解析 → `PERSONA-02` 人格提炼 → `PERSONA-03` 画像存储
-- **记忆线**：`MEM-01` 读取 / `MEM-03` 衰减检索 → `MEM-02` 写入提炼
+- **记忆线**：~~`MEM-01` 读取 / `MEM-03` 衰减检索~~ ✅ → `MEM-02` 写入提炼（依赖 ModelAdapter + OpenLoopEngine）
 - **界面线**：`UI-01` 聊天页 / `UI-02` 建号向导（可用 mock 数据先做视觉）
 
 **推荐起步点**：`CHAT-03`（纯函数、不依赖 LLM、单测友好）+ `PERSONA-01`（靠 MockAdapter 可离线验证）。
