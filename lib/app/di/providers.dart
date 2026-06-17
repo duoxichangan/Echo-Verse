@@ -84,9 +84,15 @@ final outputPostProcessorProvider = Provider<OutputPostProcessor>(
   (ref) => OutputPostProcessorImpl(ref.watch(stickerRepoProvider)),
 );
 
-/// 记忆服务（手册 MEM-01 读取 / MEM-03 检索；MEM-02 写入待后续工单）。
+/// 记忆服务（手册 MEM-01 读取 / MEM-02 写入 / MEM-03 检索）。
+///
+/// 读取/检索不需要模型；写入提炼（extract）需要 adapter——用 valueOrNull 拿当前已
+/// 解析的适配器（未就绪则为 null，extract 退化为只处理 [记住:x] 内联标记，不阻塞读取）。
 final memoryServiceProvider = Provider<MemoryService>(
-  (ref) => DriftMemoryService(ref.watch(databaseProvider)),
+  (ref) => DriftMemoryService(
+    ref.watch(databaseProvider),
+    adapter: ref.watch(modelAdapterProvider).valueOrNull,
+  ),
 );
 
 /// 画像仓储（手册 PERSONA-03 存储部分）。
@@ -111,6 +117,7 @@ final chatEngineProvider = FutureProvider<ChatEngine>((ref) async {
     assembler: ref.watch(contextAssemblerProvider),
     adapter: adapter,
     postProcessor: ref.watch(outputPostProcessorProvider),
+    memoryService: ref.watch(memoryServiceProvider), // 每 M 轮提炼（MEM-02）
   );
 });
 

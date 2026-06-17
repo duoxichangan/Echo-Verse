@@ -211,11 +211,11 @@ void main() {
       expect(await mem.search(1, '   '), isEmpty);
     });
 
-    test('extract 暂未实现（MEM-02 后续工单）', () async {
-      expect(
-        () => mem.extract(1, [Msg.user('在吗')]),
-        throwsA(isA<UnimplementedError>()),
-      );
+    test('extract 已实现：无 adapter 时只处理 [记住:x]，不抛', () async {
+      // 这里的 mem 未注入 adapter，extract 应跳过 LLM 提炼、只抓内联标记。
+      await mem.extract(1, [Msg.user('记得 [记住:周末去爬山]')]);
+      final facts = await db.select(db.facts).get();
+      expect(facts.any((f) => f.content == '周末去爬山'), isTrue);
     });
   },
       skip: hasSqlite

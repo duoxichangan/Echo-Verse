@@ -9,10 +9,10 @@
 ## 当前状态
 
 **已完成：批次 A / M0「工程地基可运行」** — 提交 `65dda0d`
-**进行中：批次 B / MVP 核心** — 对话闭环 + UI-01 微信聊天页 + PERSONA-01/02 建号（解析/提炼/直接创建）
+**进行中：批次 B / MVP 核心** — 对话闭环 + UI-01 聊天页 + PERSONA-01/02 建号 + MEM-02 记忆写入（记忆已能自己长）
 
 - `flutter analyze`：无问题
-- `flutter test`：全 50 项通过
+- `flutter test`：全 59 项通过
 - `flutter build apk --debug`：✅ 通过（已配国内镜像解决依赖超时，见工具链坑 #3/#4）
 
 ---
@@ -116,20 +116,35 @@
 - [x] `PersonaRepo` 契约加 `create`；DI 注册 `chatLogParserProvider` / `personaBuilderProvider`
 - [x] 16 项单测（json 抽取 / 画像编解码往返 / 解析器结构+采样+兜底 / 提炼 build+buildFromHints+L0兜底+硬设定覆盖）
 
+### MEM-02 记忆写入 / 提炼（「记忆像真人」收口——会自己长记忆）
+- [x] `lib/domain/models/memory_extraction.dart`：提炼输出模型（summary_update / new_facts /
+      superseded / relationship_update / new_open_loops），宽容解析、空内容/坏 id 过滤、ISO→ms
+- [x] `lib/prompts/memory_prompts.dart`：§8.3 提炼 prompt（喂带 id 的已知事实以识别矛盾，只输出 JSON）
+- [x] `DriftMemoryService.extract`：识别 `[记住:x]` 内联标记直接入库（高重要性，无需 LLM）；
+      调 LLM 提炼 → 写 L2 新事实、**矛盾覆盖**（旧事实 valid=false + superseded_by）、
+      更新 L1 摘要（覆盖式）、更新 L3 关系（closeness 增量 clamp）、
+      开放回路落 `open_loops`(pending，本轮不调度——PROACT-02 后续接)
+- [x] `DriftMemoryService` 加可选 `ModelAdapter`；adapter=null 时退化为只处理内联标记
+- [x] ChatEngine 每累计 `extractEvery`(默认 6) 条新消息后台静默触发提炼（不阻塞回复、失败不影响对话）
+- [x] DI：`memoryServiceProvider` 用 `modelAdapterProvider.valueOrNull` 拿 adapter；chatEngine 注入 memoryService
+- [x] 决策：开放回路**先落库不调度**、提炼**每 M 轮自动**（用户确认）
+- [x] 9 项单测（提炼模型解析 / 内联标记 / 新事实 / 矛盾覆盖 / L3 更新 / 回路落库 pending / 非 JSON 兜底）
+
 ---
 
 ## 待办（批次 B / MVP 核心 · M1–M3，尚未开工）
 
 > 多条线可并行，彼此只靠已冻结的契约 / Mock 耦合。
 
-- **对话线**：~~`CHAT-03`~~ ✅ ~~`CHAT-01` 上下文组装~~ ✅ ~~`CHAT-02` 对话生成~~ ✅ → 接真 key 端到端验证
+- **对话线**：~~`CHAT-03`~~ ✅ ~~`CHAT-01`~~ ✅ ~~`CHAT-02`~~ ✅ → 接真 key 端到端验证
 - **人格线**：~~`PERSONA-01` txt 解析~~ ✅ ~~`PERSONA-02` 人格提炼（含直接创建）~~ ✅ → `PERSONA-03` 编辑器 UI（UI-03，M4）
-- **记忆线**：~~`MEM-01` 读取 / `MEM-03` 衰减检索~~ ✅ → `MEM-02` 写入提炼（依赖 ModelAdapter + OpenLoopEngine）
-- **界面线**：~~`UI-01` 聊天页~~ ✅ ~~`UI-02` 建号向导（创建路径）~~ ✅ → txt 导入向导 UI（解析逻辑已就绪）/ `UI-03` 画像编辑器
+- **记忆线**：~~`MEM-01` 读取 / `MEM-03` 衰减检索~~ ✅ ~~`MEM-02` 写入提炼~~ ✅ → `MEM-04` 记忆面板（M4）
+- **界面线**：~~`UI-01` 聊天页~~ ✅ ~~`UI-02` 建号向导（创建路径）~~ ✅ → txt 导入向导 UI / `UI-03` 画像编辑器 / `UI-04` 记忆面板
 
-**当前断点**：能创建数字人（填设定 / 逻辑上也能导入 txt 提炼）、在微信界面聊天、读历史记忆；
-但**聊完不会自动写记忆**（MEM-02），**txt 导入只有逻辑没接 UI**，**画像只能在创建时填、还不能逐层编辑**（UI-03/M4）。
-下一步候选：① `MEM-02` 记忆写入（闭合「记忆像真人」）；② txt 导入向导 UI（把已就绪的解析/提炼接进界面）；③ `UI-03` 画像编辑器。
+**当前断点**：MVP 核心闭环已基本贯通——建号（填设定/逻辑上可导入）→ 微信界面聊天 → 读历史记忆 →
+**聊着聊着自动长记忆**（事实/关系/开放回路）。仍缺：txt 导入只有逻辑没接 UI；
+画像/记忆只能看不能逐层改（UI-03/04，M4）；开放回路只落库未主动推送（PROACT，批次 D）。
+下一步候选：① 接真 key 端到端验证「像不像本人」（MVP 灵魂验收）；② txt 导入向导 UI；③ M4 收尾（编辑器/记忆面板/导出）。
 
 **推荐起步点**：`CHAT-03`（纯函数、不依赖 LLM、单测友好）+ `PERSONA-01`（靠 MockAdapter 可离线验证）。
 

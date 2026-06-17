@@ -2,19 +2,26 @@ import 'package:drift/drift.dart';
 
 import '../../data/db/database.dart';
 import '../../domain/contracts/memory_service.dart';
+import '../../domain/contracts/model_adapter.dart';
 import '../../domain/models/chat_message.dart';
+import '../../domain/models/memory_extraction.dart';
+import '../../prompts/memory_prompts.dart';
+import '../persona/json_extract.dart';
 import 'salience.dart';
 
-/// 记忆服务的 drift 实现（手册 MEM-01 读取 / MEM-03 衰减检索）。
+/// 记忆服务的 drift 实现（手册 MEM-01 读取 / MEM-02 写入 / MEM-03 衰减检索）。
 ///
 /// - [readResident]：拼装常驻记忆（L1 摘要 + L3 关系 + 高显著 L2 事实），受预算约束。
 /// - [search]：L5 关键词 + 时间检索（拆词 LIKE，按命中词数 + 显著度排序，无 embedding）。
-/// - [recomputeTopFacts]：按显著度排序取前 K（衰减体现在排序里，低分自然沉底）。
-/// - [extract]（MEM-02）：依赖 ModelAdapter + OpenLoopEngine，留待后续工单，暂抛未实现。
+/// - [extract]（MEM-02）：识别 [记住:x] 内联标记 + 调 LLM 提炼（§8.3）→ 写 L2 新事实、
+///   矛盾覆盖、更新 L1 摘要 / L3 关系、开放回路落 open_loops(pending，本轮不调度)。
 ///
 /// 显著度衰减委托 [Salience]（指数 / pinned 跳过）。`now` 由构造注入便于测试。
 class DriftMemoryService implements MemoryService {
   final AppDatabase db;
+
+  /// 提炼用的模型适配器；null 时 [extract] 只处理 [记住:x] 内联标记、跳过 LLM 提炼。
+  final ModelAdapter? adapter;
 
   /// 取当前时间戳（毫秒）。注入便于测试与避免直接依赖时钟。
   final int Function() nowMs;
@@ -27,6 +34,7 @@ class DriftMemoryService implements MemoryService {
 
   DriftMemoryService(
     this.db, {
+    this.adapter,
     int Function()? nowMs,
     this.maxResidentFacts = 12,
     this.tokensPerChar = 1.0,
@@ -173,13 +181,148 @@ class DriftMemoryService implements MemoryService {
     return n;
   }
 
-  // ── MEM-02 写入提炼（后续工单）─────────────────────────────
+  // ── MEM-02 写入 / 提炼 ─────────────────────────────────────
+
+  /// 匹配内联记忆标记 `[记住:xxx]`（全/半角冒号）。
+  static final _rememberExp = RegExp(r'\[记住[:：]\s*(.+?)\s*\]');
 
   @override
-  Future<void> extract(int personaId, List<Msg> newMsgs) {
-    throw UnimplementedError(
-      'MEM-02 记忆写入/提炼依赖 ModelAdapter + OpenLoopEngine，留待对应工单实现。',
-    );
+  Future<void> extract(int personaId, List<Msg> newMsgs) async {
+    final now = nowMs();
+
+    // 1) 内联标记：[记住:xxx] 直接写为高重要性事实（说明书 §8.3）。
+    for (final m in newMsgs) {
+      for (final mt in _rememberExp.allMatches(m.content)) {
+        final content = mt.group(1)!.trim();
+        if (content.isNotEmpty) {
+          await _insertFact(personaId, content, importance: 0.8, now: now);
+        }
+      }
+    }
+
+    // 无适配器：只做内联标记，跳过 LLM 提炼。
+    if (adapter == null || newMsgs.isEmpty) return;
+
+    // 2) 备齐提炼输入：已知事实（带 id）+ 当前摘要 + 最近对话。
+    final knownFacts = await _knownFactsText(personaId, now);
+    final summaryRow = await (db.select(db.sessionSummaries)
+          ..where((t) => t.personaId.equals(personaId)))
+        .getSingleOrNull();
+    final dialogue = newMsgs
+        .map((m) => '${m.role == Role.user ? '用户' : 'TA'}: ${m.content}')
+        .join('\n');
+
+    // 3) 调 LLM 提炼。
+    final buf = StringBuffer();
+    await for (final chunk in adapter!.chat(
+      system: MemoryPrompts.system,
+      messages: [
+        Msg.user(MemoryPrompts.user(
+          knownFacts: knownFacts,
+          recentDialogue: dialogue,
+          currentSummary: summaryRow?.summary ?? '',
+        )),
+      ],
+      opts: const ChatOpts(temperature: 0.3),
+    )) {
+      buf.write(chunk);
+    }
+    final json = extractJsonObject(buf.toString());
+    if (json == null) return; // 提炼不出结构就不动库（已写过内联标记）
+    final ex = MemoryExtraction.fromJson(json);
+
+    // 4) 落库。
+    // 4a) 矛盾覆盖：旧事实置 superseded_by=-1（占位“被覆盖”）+ valid=false。
+    for (final s in ex.superseded) {
+      await (db.update(db.facts)
+            ..where((f) => f.id.equals(s.oldFactId) & f.personaId.equals(personaId)))
+          .write(const FactsCompanion(
+        valid: Value(false),
+        supersededBy: Value(-1),
+      ));
+    }
+    // 4b) 新事实入库。
+    for (final f in ex.newFacts) {
+      await _insertFact(personaId, f.content, importance: f.importance, now: now);
+    }
+    // 4c) L1 摘要更新（覆盖式）。
+    if (ex.summaryUpdate != null && ex.summaryUpdate!.trim().isNotEmpty) {
+      await _upsertSummary(personaId, ex.summaryUpdate!.trim(), now);
+    }
+    // 4d) L3 关系更新。
+    if (ex.relationshipUpdate?.hasChange ?? false) {
+      await _applyRelationshipUpdate(personaId, ex.relationshipUpdate!, now);
+    }
+    // 4e) 开放回路落库（pending，本轮不调度——PROACT-02 后续接）。
+    for (final l in ex.newOpenLoops) {
+      await db.into(db.openLoops).insert(OpenLoopsCompanion.insert(
+            personaId: personaId,
+            event: l.event,
+            plannedAction: l.plannedAction,
+            triggerType: l.triggerType,
+            triggerAt: Value(l.triggerAtMs()),
+            importance: Value(l.importance),
+            createdAt: now,
+          ));
+    }
+  }
+
+  Future<void> _insertFact(int personaId, String content,
+      {required double importance, required int now}) async {
+    await db.into(db.facts).insert(FactsCompanion.insert(
+          personaId: personaId,
+          content: content,
+          lastReferencedAt: now,
+          createdAt: now,
+          importance: Value(importance),
+        ));
+  }
+
+  /// 当前有效事实拼成 "id. content" 文本，供提炼识别矛盾。
+  Future<String> _knownFactsText(int personaId, int now) async {
+    final facts = await topFacts(personaId, now: now);
+    return facts.map((f) => '${f.id}. ${f.content}').join('\n');
+  }
+
+  Future<void> _upsertSummary(int personaId, String summary, int now) async {
+    await db.into(db.sessionSummaries).insertOnConflictUpdate(
+          SessionSummariesCompanion.insert(
+            personaId: Value(personaId),
+            summary: Value(summary),
+            updatedAt: now,
+          ),
+        );
+  }
+
+  Future<void> _applyRelationshipUpdate(
+      int personaId, RelationshipUpdate u, int now) async {
+    final existing = await (db.select(db.relationshipStates)
+          ..where((t) => t.personaId.equals(personaId)))
+        .getSingleOrNull();
+    final oldCloseness = existing?.closeness ?? 0.5;
+    final newCloseness =
+        (oldCloseness + u.closenessDelta).clamp(0.0, 1.0).toDouble();
+    final mood = (u.mood != null && u.mood!.trim().isNotEmpty)
+        ? u.mood!.trim()
+        : (existing?.mood ?? '');
+    final unresolvedJson =
+        u.unresolved.isNotEmpty ? _encodeList(u.unresolved) : (existing?.unresolved ?? '[]');
+
+    await db.into(db.relationshipStates).insertOnConflictUpdate(
+          RelationshipStatesCompanion.insert(
+            personaId: Value(personaId),
+            mood: Value(mood),
+            closeness: Value(newCloseness),
+            unresolved: Value(unresolvedJson),
+            updatedAt: now,
+          ),
+        );
+  }
+
+  String _encodeList(List<String> items) {
+    // 简单 JSON 数组编码（unresolved 列存 JSON 列表）。
+    final escaped = items.map((s) => '"${s.replaceAll('"', r'\"')}"');
+    return '[${escaped.join(',')}]';
   }
 }
 
