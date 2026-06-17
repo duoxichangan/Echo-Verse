@@ -15,10 +15,13 @@ class ChatBubbleData {
   /// 表情图片路径；文本消息为 null。
   final String? stickerPath;
 
-  const ChatBubbleData.text(this.text, {required this.isSelf})
+  /// 发送时间戳（毫秒），用于按微信规则显示时间分隔。
+  final int createdAt;
+
+  const ChatBubbleData.text(this.text, {required this.isSelf, this.createdAt = 0})
       : stickerPath = null;
 
-  const ChatBubbleData.sticker(this.stickerPath, {required this.isSelf})
+  const ChatBubbleData.sticker(this.stickerPath, {required this.isSelf, this.createdAt = 0})
       : text = null;
 
   bool get isSticker => stickerPath != null;
@@ -28,10 +31,18 @@ class ChatBubbleData {
 class ChatBubble extends StatelessWidget {
   final ChatBubbleData data;
 
-  /// 对方头像路径（自己暂用占位）。
+  /// 对方头像路径。
   final String? peerAvatarPath;
 
-  const ChatBubble({super.key, required this.data, this.peerAvatarPath});
+  /// 自己（用户）头像路径。
+  final String? selfAvatarPath;
+
+  const ChatBubble({
+    super.key,
+    required this.data,
+    this.peerAvatarPath,
+    this.selfAvatarPath,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -65,14 +76,15 @@ class ChatBubble extends StatelessWidget {
   }
 
   Widget _avatar(bool self) {
-    final hasImg = !self && peerAvatarPath != null && peerAvatarPath!.isNotEmpty;
+    final path = self ? selfAvatarPath : peerAvatarPath;
+    final hasImg = path != null && path.isNotEmpty && File(path).existsSync();
     return ClipRRect(
       borderRadius: BorderRadius.circular(4), // 微信头像方形小圆角
       child: SizedBox(
         width: WeChat.avatarSize,
         height: WeChat.avatarSize,
         child: hasImg
-            ? Image.file(File(peerAvatarPath!), fit: BoxFit.cover)
+            ? Image.file(File(path), fit: BoxFit.cover)
             : Container(
                 color: self ? WeChat.brand : const Color(0xFFBFBFBF),
                 child: Icon(
@@ -162,4 +174,49 @@ class _BubbleTailPainter extends CustomPainter {
   @override
   bool shouldRepaint(_BubbleTailPainter old) =>
       old.color != color || old.isSelf != isSelf;
+}
+
+/// 微信式居中时间分隔（按与上一条的间隔决定是否显示）。
+class ChatTimeDivider extends StatelessWidget {
+  final int timestampMs;
+
+  const ChatTimeDivider({super.key, required this.timestampMs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Center(
+        child: Text(
+          formatWeChatTime(DateTime.fromMillisecondsSinceEpoch(timestampMs)),
+          style: const TextStyle(fontSize: 12, color: WeChat.textHint),
+        ),
+      ),
+    );
+  }
+}
+
+/// 微信时间显示规则：今天只显示时:分；昨天显示“昨天 HH:mm”；
+/// 一周内显示“周X HH:mm”；更早显示“M月D日 HH:mm”；跨年加年份。
+String formatWeChatTime(DateTime t) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final that = DateTime(t.year, t.month, t.day);
+  final diffDays = today.difference(that).inDays;
+  final hm = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  if (diffDays == 0) return hm;
+  if (diffDays == 1) return '昨天 $hm';
+  if (diffDays < 7 && t.year == now.year) {
+    const wd = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    return '${wd[(t.weekday - 1) % 7]} $hm';
+  }
+  if (t.year == now.year) return '${t.month}月${t.day}日 $hm';
+  return '${t.year}年${t.month}月${t.day}日 $hm';
+}
+
+/// 两条消息间隔超过 [gapMinutes] 分钟才显示时间分隔（微信规则）。
+bool shouldShowTime(int prevMs, int curMs, {int gapMinutes = 5}) {
+  if (prevMs == 0) return true; // 第一条总显示
+  return (curMs - prevMs).abs() >= gapMinutes * 60 * 1000;
 }

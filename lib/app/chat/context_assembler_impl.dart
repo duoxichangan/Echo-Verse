@@ -26,13 +26,17 @@ class ContextAssemblerImpl implements ContextAssembler {
   /// 分给常驻记忆块的 token 预算占总预算的比例（其余留给画像与原文）。
   final double memoryBudgetRatio;
 
-  const ContextAssemblerImpl({
+  /// 取当前时间（注入便于测试）；用于给 prompt 注入时段感。
+  final DateTime Function() now;
+
+  ContextAssemblerImpl({
     required this.personaRepo,
     required this.memoryService,
     required this.stickerRepo,
     this.maxRecentMsgs = 20,
     this.memoryBudgetRatio = 0.4,
-  });
+    DateTime Function()? now,
+  }) : now = now ?? DateTime.now;
 
   @override
   Future<Prompt> assemble(
@@ -55,6 +59,7 @@ class ContextAssemblerImpl implements ContextAssembler {
       userAlias: persona?.userAlias,
       memoryBlock: memoryBlock,
       stickerLabels: labels,
+      now: now(),
     );
 
     // messages：只保留最近 maxRecentMsgs 条（更早的已被摘要覆盖）。

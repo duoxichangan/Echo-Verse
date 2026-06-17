@@ -9,6 +9,10 @@ class MomentView {
   final bool likedByUser;
   final String? userComment;
 
+  /// 发布者展示信息（聚合页用；单人页可空）。
+  final String? personaName;
+  final String? personaAvatarPath;
+
   const MomentView({
     required this.id,
     required this.personaId,
@@ -16,5 +20,7 @@ class MomentView {
     required this.postedAt,
     this.likedByUser = false,
     this.userComment,
+    this.personaName,
+    this.personaAvatarPath,
   });
 }

@@ -3217,6 +3217,28 @@ class $SettingsTableTable extends SettingsTable
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(4000));
+  static const VerificationMeta _userNameMeta =
+      const VerificationMeta('userName');
+  @override
+  late final GeneratedColumn<String> userName = GeneratedColumn<String>(
+      'user_name', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('我'));
+  static const VerificationMeta _userAvatarPathMeta =
+      const VerificationMeta('userAvatarPath');
+  @override
+  late final GeneratedColumn<String> userAvatarPath = GeneratedColumn<String>(
+      'user_avatar_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _momentFrequencyMeta =
+      const VerificationMeta('momentFrequency');
+  @override
+  late final GeneratedColumn<int> momentFrequency = GeneratedColumn<int>(
+      'moment_frequency', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(30));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -3225,7 +3247,10 @@ class $SettingsTableTable extends SettingsTable
         model,
         activeHours,
         dailyProactiveQuota,
-        tokenBudget
+        tokenBudget,
+        userName,
+        userAvatarPath,
+        momentFrequency
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3276,6 +3301,22 @@ class $SettingsTableTable extends SettingsTable
           tokenBudget.isAcceptableOrUnknown(
               data['token_budget']!, _tokenBudgetMeta));
     }
+    if (data.containsKey('user_name')) {
+      context.handle(_userNameMeta,
+          userName.isAcceptableOrUnknown(data['user_name']!, _userNameMeta));
+    }
+    if (data.containsKey('user_avatar_path')) {
+      context.handle(
+          _userAvatarPathMeta,
+          userAvatarPath.isAcceptableOrUnknown(
+              data['user_avatar_path']!, _userAvatarPathMeta));
+    }
+    if (data.containsKey('moment_frequency')) {
+      context.handle(
+          _momentFrequencyMeta,
+          momentFrequency.isAcceptableOrUnknown(
+              data['moment_frequency']!, _momentFrequencyMeta));
+    }
     return context;
   }
 
@@ -3299,6 +3340,12 @@ class $SettingsTableTable extends SettingsTable
           DriftSqlType.int, data['${effectivePrefix}daily_proactive_quota'])!,
       tokenBudget: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}token_budget'])!,
+      userName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}user_name'])!,
+      userAvatarPath: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}user_avatar_path']),
+      momentFrequency: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}moment_frequency'])!,
     );
   }
 
@@ -3317,6 +3364,13 @@ class SettingsTableData extends DataClass
   final String activeHours;
   final int dailyProactiveQuota;
   final int tokenBudget;
+
+  /// 全局“我”——用户昵称与头像（所有数字人共用一个用户身份）。
+  final String userName;
+  final String? userAvatarPath;
+
+  /// 朋友圈自发活跃度 0–100（0=从不自发，越高越常发）。
+  final int momentFrequency;
   const SettingsTableData(
       {required this.id,
       required this.provider,
@@ -3324,7 +3378,10 @@ class SettingsTableData extends DataClass
       required this.model,
       required this.activeHours,
       required this.dailyProactiveQuota,
-      required this.tokenBudget});
+      required this.tokenBudget,
+      required this.userName,
+      this.userAvatarPath,
+      required this.momentFrequency});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -3335,6 +3392,11 @@ class SettingsTableData extends DataClass
     map['active_hours'] = Variable<String>(activeHours);
     map['daily_proactive_quota'] = Variable<int>(dailyProactiveQuota);
     map['token_budget'] = Variable<int>(tokenBudget);
+    map['user_name'] = Variable<String>(userName);
+    if (!nullToAbsent || userAvatarPath != null) {
+      map['user_avatar_path'] = Variable<String>(userAvatarPath);
+    }
+    map['moment_frequency'] = Variable<int>(momentFrequency);
     return map;
   }
 
@@ -3347,6 +3409,11 @@ class SettingsTableData extends DataClass
       activeHours: Value(activeHours),
       dailyProactiveQuota: Value(dailyProactiveQuota),
       tokenBudget: Value(tokenBudget),
+      userName: Value(userName),
+      userAvatarPath: userAvatarPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userAvatarPath),
+      momentFrequency: Value(momentFrequency),
     );
   }
 
@@ -3362,6 +3429,9 @@ class SettingsTableData extends DataClass
       dailyProactiveQuota:
           serializer.fromJson<int>(json['dailyProactiveQuota']),
       tokenBudget: serializer.fromJson<int>(json['tokenBudget']),
+      userName: serializer.fromJson<String>(json['userName']),
+      userAvatarPath: serializer.fromJson<String?>(json['userAvatarPath']),
+      momentFrequency: serializer.fromJson<int>(json['momentFrequency']),
     );
   }
   @override
@@ -3375,6 +3445,9 @@ class SettingsTableData extends DataClass
       'activeHours': serializer.toJson<String>(activeHours),
       'dailyProactiveQuota': serializer.toJson<int>(dailyProactiveQuota),
       'tokenBudget': serializer.toJson<int>(tokenBudget),
+      'userName': serializer.toJson<String>(userName),
+      'userAvatarPath': serializer.toJson<String?>(userAvatarPath),
+      'momentFrequency': serializer.toJson<int>(momentFrequency),
     };
   }
 
@@ -3385,7 +3458,10 @@ class SettingsTableData extends DataClass
           String? model,
           String? activeHours,
           int? dailyProactiveQuota,
-          int? tokenBudget}) =>
+          int? tokenBudget,
+          String? userName,
+          Value<String?> userAvatarPath = const Value.absent(),
+          int? momentFrequency}) =>
       SettingsTableData(
         id: id ?? this.id,
         provider: provider ?? this.provider,
@@ -3394,6 +3470,10 @@ class SettingsTableData extends DataClass
         activeHours: activeHours ?? this.activeHours,
         dailyProactiveQuota: dailyProactiveQuota ?? this.dailyProactiveQuota,
         tokenBudget: tokenBudget ?? this.tokenBudget,
+        userName: userName ?? this.userName,
+        userAvatarPath:
+            userAvatarPath.present ? userAvatarPath.value : this.userAvatarPath,
+        momentFrequency: momentFrequency ?? this.momentFrequency,
       );
   SettingsTableData copyWithCompanion(SettingsTableCompanion data) {
     return SettingsTableData(
@@ -3408,6 +3488,13 @@ class SettingsTableData extends DataClass
           : this.dailyProactiveQuota,
       tokenBudget:
           data.tokenBudget.present ? data.tokenBudget.value : this.tokenBudget,
+      userName: data.userName.present ? data.userName.value : this.userName,
+      userAvatarPath: data.userAvatarPath.present
+          ? data.userAvatarPath.value
+          : this.userAvatarPath,
+      momentFrequency: data.momentFrequency.present
+          ? data.momentFrequency.value
+          : this.momentFrequency,
     );
   }
 
@@ -3420,14 +3507,26 @@ class SettingsTableData extends DataClass
           ..write('model: $model, ')
           ..write('activeHours: $activeHours, ')
           ..write('dailyProactiveQuota: $dailyProactiveQuota, ')
-          ..write('tokenBudget: $tokenBudget')
+          ..write('tokenBudget: $tokenBudget, ')
+          ..write('userName: $userName, ')
+          ..write('userAvatarPath: $userAvatarPath, ')
+          ..write('momentFrequency: $momentFrequency')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, provider, baseUrl, model, activeHours,
-      dailyProactiveQuota, tokenBudget);
+  int get hashCode => Object.hash(
+      id,
+      provider,
+      baseUrl,
+      model,
+      activeHours,
+      dailyProactiveQuota,
+      tokenBudget,
+      userName,
+      userAvatarPath,
+      momentFrequency);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3438,7 +3537,10 @@ class SettingsTableData extends DataClass
           other.model == this.model &&
           other.activeHours == this.activeHours &&
           other.dailyProactiveQuota == this.dailyProactiveQuota &&
-          other.tokenBudget == this.tokenBudget);
+          other.tokenBudget == this.tokenBudget &&
+          other.userName == this.userName &&
+          other.userAvatarPath == this.userAvatarPath &&
+          other.momentFrequency == this.momentFrequency);
 }
 
 class SettingsTableCompanion extends UpdateCompanion<SettingsTableData> {
@@ -3449,6 +3551,9 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsTableData> {
   final Value<String> activeHours;
   final Value<int> dailyProactiveQuota;
   final Value<int> tokenBudget;
+  final Value<String> userName;
+  final Value<String?> userAvatarPath;
+  final Value<int> momentFrequency;
   const SettingsTableCompanion({
     this.id = const Value.absent(),
     this.provider = const Value.absent(),
@@ -3457,6 +3562,9 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsTableData> {
     this.activeHours = const Value.absent(),
     this.dailyProactiveQuota = const Value.absent(),
     this.tokenBudget = const Value.absent(),
+    this.userName = const Value.absent(),
+    this.userAvatarPath = const Value.absent(),
+    this.momentFrequency = const Value.absent(),
   });
   SettingsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -3466,6 +3574,9 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsTableData> {
     this.activeHours = const Value.absent(),
     this.dailyProactiveQuota = const Value.absent(),
     this.tokenBudget = const Value.absent(),
+    this.userName = const Value.absent(),
+    this.userAvatarPath = const Value.absent(),
+    this.momentFrequency = const Value.absent(),
   })  : provider = Value(provider),
         baseUrl = Value(baseUrl),
         model = Value(model);
@@ -3477,6 +3588,9 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsTableData> {
     Expression<String>? activeHours,
     Expression<int>? dailyProactiveQuota,
     Expression<int>? tokenBudget,
+    Expression<String>? userName,
+    Expression<String>? userAvatarPath,
+    Expression<int>? momentFrequency,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3487,6 +3601,9 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsTableData> {
       if (dailyProactiveQuota != null)
         'daily_proactive_quota': dailyProactiveQuota,
       if (tokenBudget != null) 'token_budget': tokenBudget,
+      if (userName != null) 'user_name': userName,
+      if (userAvatarPath != null) 'user_avatar_path': userAvatarPath,
+      if (momentFrequency != null) 'moment_frequency': momentFrequency,
     });
   }
 
@@ -3497,7 +3614,10 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsTableData> {
       Value<String>? model,
       Value<String>? activeHours,
       Value<int>? dailyProactiveQuota,
-      Value<int>? tokenBudget}) {
+      Value<int>? tokenBudget,
+      Value<String>? userName,
+      Value<String?>? userAvatarPath,
+      Value<int>? momentFrequency}) {
     return SettingsTableCompanion(
       id: id ?? this.id,
       provider: provider ?? this.provider,
@@ -3506,6 +3626,9 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsTableData> {
       activeHours: activeHours ?? this.activeHours,
       dailyProactiveQuota: dailyProactiveQuota ?? this.dailyProactiveQuota,
       tokenBudget: tokenBudget ?? this.tokenBudget,
+      userName: userName ?? this.userName,
+      userAvatarPath: userAvatarPath ?? this.userAvatarPath,
+      momentFrequency: momentFrequency ?? this.momentFrequency,
     );
   }
 
@@ -3533,6 +3656,15 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsTableData> {
     if (tokenBudget.present) {
       map['token_budget'] = Variable<int>(tokenBudget.value);
     }
+    if (userName.present) {
+      map['user_name'] = Variable<String>(userName.value);
+    }
+    if (userAvatarPath.present) {
+      map['user_avatar_path'] = Variable<String>(userAvatarPath.value);
+    }
+    if (momentFrequency.present) {
+      map['moment_frequency'] = Variable<int>(momentFrequency.value);
+    }
     return map;
   }
 
@@ -3545,7 +3677,10 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsTableData> {
           ..write('model: $model, ')
           ..write('activeHours: $activeHours, ')
           ..write('dailyProactiveQuota: $dailyProactiveQuota, ')
-          ..write('tokenBudget: $tokenBudget')
+          ..write('tokenBudget: $tokenBudget, ')
+          ..write('userName: $userName, ')
+          ..write('userAvatarPath: $userAvatarPath, ')
+          ..write('momentFrequency: $momentFrequency')
           ..write(')'))
         .toString();
   }
@@ -6410,6 +6545,9 @@ typedef $$SettingsTableTableCreateCompanionBuilder = SettingsTableCompanion
   Value<String> activeHours,
   Value<int> dailyProactiveQuota,
   Value<int> tokenBudget,
+  Value<String> userName,
+  Value<String?> userAvatarPath,
+  Value<int> momentFrequency,
 });
 typedef $$SettingsTableTableUpdateCompanionBuilder = SettingsTableCompanion
     Function({
@@ -6420,6 +6558,9 @@ typedef $$SettingsTableTableUpdateCompanionBuilder = SettingsTableCompanion
   Value<String> activeHours,
   Value<int> dailyProactiveQuota,
   Value<int> tokenBudget,
+  Value<String> userName,
+  Value<String?> userAvatarPath,
+  Value<int> momentFrequency,
 });
 
 class $$SettingsTableTableFilterComposer
@@ -6452,6 +6593,17 @@ class $$SettingsTableTableFilterComposer
 
   ColumnFilters<int> get tokenBudget => $composableBuilder(
       column: $table.tokenBudget, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get userName => $composableBuilder(
+      column: $table.userName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get userAvatarPath => $composableBuilder(
+      column: $table.userAvatarPath,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get momentFrequency => $composableBuilder(
+      column: $table.momentFrequency,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$SettingsTableTableOrderingComposer
@@ -6484,6 +6636,17 @@ class $$SettingsTableTableOrderingComposer
 
   ColumnOrderings<int> get tokenBudget => $composableBuilder(
       column: $table.tokenBudget, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get userName => $composableBuilder(
+      column: $table.userName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get userAvatarPath => $composableBuilder(
+      column: $table.userAvatarPath,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get momentFrequency => $composableBuilder(
+      column: $table.momentFrequency,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$SettingsTableTableAnnotationComposer
@@ -6515,6 +6678,15 @@ class $$SettingsTableTableAnnotationComposer
 
   GeneratedColumn<int> get tokenBudget => $composableBuilder(
       column: $table.tokenBudget, builder: (column) => column);
+
+  GeneratedColumn<String> get userName =>
+      $composableBuilder(column: $table.userName, builder: (column) => column);
+
+  GeneratedColumn<String> get userAvatarPath => $composableBuilder(
+      column: $table.userAvatarPath, builder: (column) => column);
+
+  GeneratedColumn<int> get momentFrequency => $composableBuilder(
+      column: $table.momentFrequency, builder: (column) => column);
 }
 
 class $$SettingsTableTableTableManager extends RootTableManager<
@@ -6550,6 +6722,9 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             Value<String> activeHours = const Value.absent(),
             Value<int> dailyProactiveQuota = const Value.absent(),
             Value<int> tokenBudget = const Value.absent(),
+            Value<String> userName = const Value.absent(),
+            Value<String?> userAvatarPath = const Value.absent(),
+            Value<int> momentFrequency = const Value.absent(),
           }) =>
               SettingsTableCompanion(
             id: id,
@@ -6559,6 +6734,9 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             activeHours: activeHours,
             dailyProactiveQuota: dailyProactiveQuota,
             tokenBudget: tokenBudget,
+            userName: userName,
+            userAvatarPath: userAvatarPath,
+            momentFrequency: momentFrequency,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -6568,6 +6746,9 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             Value<String> activeHours = const Value.absent(),
             Value<int> dailyProactiveQuota = const Value.absent(),
             Value<int> tokenBudget = const Value.absent(),
+            Value<String> userName = const Value.absent(),
+            Value<String?> userAvatarPath = const Value.absent(),
+            Value<int> momentFrequency = const Value.absent(),
           }) =>
               SettingsTableCompanion.insert(
             id: id,
@@ -6577,6 +6758,9 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             activeHours: activeHours,
             dailyProactiveQuota: dailyProactiveQuota,
             tokenBudget: tokenBudget,
+            userName: userName,
+            userAvatarPath: userAvatarPath,
+            momentFrequency: momentFrequency,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

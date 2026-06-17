@@ -14,6 +14,9 @@ abstract class SocialService {
   /// 列出某人格的朋友圈（最新在前）。
   Future<List<MomentView>> listMoments(int personaId);
 
+  /// 聚合所有数字人的朋友圈（发现页用，含发布者名/头像，最新在前）。
+  Future<List<MomentView>> listAllMoments();
+
   /// SOCIAL-03：用户给某条朋友圈点赞/取消。点赞会登记一个"等待互动"开放回路，
   /// 数字人下次私聊自然提起（产品高光）。
   Future<void> setLiked(int momentId, bool liked);

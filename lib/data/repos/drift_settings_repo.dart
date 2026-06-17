@@ -26,6 +26,9 @@ class DriftSettingsRepo implements SettingsRepo {
       activeHoursJson: row.activeHours,
       dailyProactiveQuota: row.dailyProactiveQuota,
       tokenBudget: row.tokenBudget,
+      userName: row.userName,
+      userAvatarPath: row.userAvatarPath,
+      momentFrequency: row.momentFrequency,
     );
   }
 
@@ -40,6 +43,9 @@ class DriftSettingsRepo implements SettingsRepo {
             activeHours: Value(s.activeHoursJson),
             dailyProactiveQuota: Value(s.dailyProactiveQuota),
             tokenBudget: Value(s.tokenBudget),
+            userName: Value(s.userName),
+            userAvatarPath: Value(s.userAvatarPath),
+            momentFrequency: Value(s.momentFrequency),
           ),
         );
   }

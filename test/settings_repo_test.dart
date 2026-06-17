@@ -44,17 +44,31 @@ void main() {
         model: 'gpt-4o',
         dailyProactiveQuota: 9,
         tokenBudget: 8000,
+        userName: '阿强',
+        userAvatarPath: '/avatars/me.png',
+        momentFrequency: 70,
       ));
       final s = await repo.get();
       expect(s.provider, LlmProvider.openai);
       expect(s.model, 'gpt-4o');
       expect(s.dailyProactiveQuota, 9);
       expect(s.tokenBudget, 8000);
+      // v2 新增字段往返
+      expect(s.userName, '阿强');
+      expect(s.userAvatarPath, '/avatars/me.png');
+      expect(s.momentFrequency, 70);
 
       // 再次更新应覆盖而非新增行
       await repo.update(s.copyWith(model: 'gpt-4o-mini'));
       final again = await repo.get();
       expect(again.model, 'gpt-4o-mini');
+      expect(again.userName, '阿强'); // 其它字段保留
+    });
+
+    test('默认配置含 v2 字段默认值', () async {
+      final s = await repo.get(); // 未写入 → initial
+      expect(s.userName, '我');
+      expect(s.momentFrequency, 30);
     });
   },
       skip: hasSqlite

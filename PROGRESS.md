@@ -19,8 +19,13 @@
 > （`时间 '说话人'` 头）本地正则全量切分（实测 17220 行→5735 条全部识别），超长记录提炼走
 > map-reduce 分批读完全部。此前「全交 LLM 逐条重输出」会因输出截断只识别出 1 条。
 
+> 增强（schema v2）：① 底部 Tab（微信/发现/我）+ 朋友圈聚合页 + 启动按「朋友圈活跃度」概率
+> 自发朋友圈（设置页滑块可调，受调度作息/配额约束）；② 用户全局头像/昵称 +「我」页、数字人
+> 头像/备注资料页（聊天页标题进入）；③ prompt 注入当前时间（深夜会困/饭点问吃饭）+ 气泡按
+> 微信规则显示时间分隔。settings 表加 userName/userAvatarPath/momentFrequency 三列（迁移 v1→v2）。
+
 - `flutter analyze`：无问题
-- `flutter test`：全 89 项通过
+- `flutter test`：全 100 项通过
 - `flutter build apk --debug`：✅ 通过
 
 ---

@@ -108,6 +108,13 @@ class SettingsTable extends Table {
   IntColumn get dailyProactiveQuota => integer().withDefault(const Constant(5))();
   IntColumn get tokenBudget => integer().withDefault(const Constant(4000))();
 
+  /// 全局“我”——用户昵称与头像（所有数字人共用一个用户身份）。
+  TextColumn get userName => text().withDefault(const Constant('我'))();
+  TextColumn get userAvatarPath => text().nullable()();
+
+  /// 朋友圈自发活跃度 0–100（0=从不自发，越高越常发）。
+  IntColumn get momentFrequency => integer().withDefault(const Constant(30))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/di/providers.dart';
 import 'app/error_handling.dart';
 import 'app/proact/proactive_bootstrap.dart';
-import 'ui/home/home_page.dart';
+import 'ui/shell/main_shell.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,9 +21,13 @@ void main() {
   // fire-and-forget——失败不影响 UI。
   WidgetsBinding.instance.addPostFrameCallback((_) async {
     try {
+      final settings = await container.read(settingsProvider.future);
+      final social = await container.read(socialServiceProvider.future);
       final bootstrap = ProactiveBootstrap(
         db: container.read(databaseProvider),
         engine: container.read(openLoopEngineProvider),
+        social: social,
+        momentFrequency: settings.momentFrequency,
       );
       await bootstrap.run();
     } catch (_) {/* 主动性补发失败不影响主流程 */}
@@ -42,7 +46,7 @@ class VirtualApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF07C160)),
         useMaterial3: true,
       ),
-      home: const HomePage(),
+      home: const MainShell(),
     );
   }
 }

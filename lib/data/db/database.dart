@@ -29,7 +29,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -46,7 +46,12 @@ class AppDatabase extends _$AppDatabase {
           );
         },
         onUpgrade: (m, from, to) async {
-          // 预留版本升级；后续按 from→to 增量迁移。
+          // v1→v2：settings 加 用户昵称/头像 + 朋友圈活跃度。
+          if (from < 2) {
+            await m.addColumn(settingsTable, settingsTable.userName);
+            await m.addColumn(settingsTable, settingsTable.userAvatarPath);
+            await m.addColumn(settingsTable, settingsTable.momentFrequency);
+          }
         },
       );
 }

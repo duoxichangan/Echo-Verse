@@ -121,7 +121,28 @@ class DefaultSocialService implements SocialService {
         .toList();
   }
 
-  // ── SOCIAL-03 点赞感知 ────────────────────────────────────
+  @override
+  Future<List<MomentView>> listAllMoments() async {
+    final rows = await (db.select(db.moments)
+          ..orderBy([(m) => OrderingTerm.desc(m.postedAt)]))
+        .get();
+    // 批量取 persona 名/头像。
+    final personas = await db.select(db.personas).get();
+    final byId = {for (final p in personas) p.id: p};
+    return rows.map((r) {
+      final p = byId[r.personaId];
+      return MomentView(
+        id: r.id,
+        personaId: r.personaId,
+        content: r.content,
+        postedAt: r.postedAt,
+        likedByUser: r.likedByUser,
+        userComment: r.userComment,
+        personaName: p?.name,
+        personaAvatarPath: p?.avatarPath,
+      );
+    }).toList();
+  }
 
   @override
   Future<void> setLiked(int momentId, bool liked) async {

@@ -35,6 +35,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   bool _busy = false; // 导出/导入进行中
   String? _opsMsg; // 数据管理结果提示
+  double _momentFreq = 30; // 朋友圈活跃度 0–100
 
   // PLACEHOLDER_METHODS
 
@@ -108,6 +109,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _baseUrlCtrl.text = settings.baseUrl;
       _modelCtrl.text = settings.model;
       _keyCtrl.text = key ?? '';
+      _momentFreq = settings.momentFrequency.toDouble();
       _loaded = true;
     });
   }
@@ -119,6 +121,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             provider: _provider,
             baseUrl: _baseUrlCtrl.text.trim(),
             model: _modelCtrl.text.trim(),
+            momentFrequency: _momentFreq.round(),
           ),
         );
     final key = _keyCtrl.text.trim();
@@ -245,6 +248,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ),
           const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 8),
+          const Text('朋友圈活跃度',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          Text(
+            _momentFreq <= 0
+                ? '数字人不会自己发朋友圈'
+                : '数字人会按这个活跃度自发朋友圈（越高越常发）：${_momentFreq.round()}',
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+          Slider(
+            value: _momentFreq,
+            min: 0,
+            max: 100,
+            divisions: 20,
+            activeColor: const Color(0xFF07C160),
+            label: '${_momentFreq.round()}',
+            onChanged: (v) => setState(() => _momentFreq = v),
+            onChangeEnd: (_) => _save(),
+          ),
+          const SizedBox(height: 16),
           const Divider(),
           const SizedBox(height: 8),
           const Text('数据管理',

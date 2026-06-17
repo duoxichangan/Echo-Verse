@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/di/providers.dart';
 import '../../data/db/database.dart';
 import '../memory/memory_panel_page.dart';
-import '../moments/moments_page.dart';
 import '../persona/persona_editor_page.dart';
+import '../persona/persona_profile_page.dart';
 import '../settings/settings_page.dart';
 import '../sticker/sticker_manager_page.dart';
 import 'chat_bubble.dart';
@@ -40,6 +40,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   bool _loading = true;
   bool _typing = false; // 对方正在输入
   bool _sending = false; // 防重复发送
+  String? _selfAvatarPath; // 用户头像（全局，从 settings 读）
 
   @override
   void initState() {
@@ -52,11 +53,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   Future<void> _loadHistory() async {
     final db = ref.read(databaseProvider);
+    final settings = await ref.read(settingsRepoProvider).get();
     final rows = await (db.select(db.messages)
           ..where((m) => m.personaId.equals(widget.personaId))
           ..orderBy([(m) => OrderingTerm.asc(m.createdAt)]))
         .get();
     setState(() {
+      _selfAvatarPath = settings.userAvatarPath;
       _bubbles.clear();
       for (final r in rows) {
         _bubbles.add(_toBubble(r));
@@ -72,10 +75,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   ChatBubbleData _toBubble(Message r) {
     final isSelf = r.sender == 'user';
     if (r.type == 'sticker') {
-      return ChatBubbleData.sticker(r.content, isSelf: isSelf);
+      return ChatBubbleData.sticker(r.content, isSelf: isSelf, createdAt: r.createdAt);
     }
     final shown = r.content.replaceAll(_rememberExp, '').trim();
-    return ChatBubbleData.text(shown, isSelf: isSelf);
+    return ChatBubbleData.text(shown, isSelf: isSelf, createdAt: r.createdAt);
   }
 
   Future<void> _send() async {
@@ -84,7 +87,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
     setState(() {
       _sending = true;
-      _bubbles.add(ChatBubbleData.text(text, isSelf: true));
+      _bubbles.add(ChatBubbleData.text(text,
+          isSelf: true, createdAt: DateTime.now().millisecondsSinceEpoch));
       _inputCtrl.clear();
       _typing = true;
     });
@@ -94,11 +98,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       final engine = await ref.read(chatEngineProvider.future);
       await for (final m in engine.send(widget.personaId, text)) {
         if (!mounted) return;
+        final ts = DateTime.now().millisecondsSinceEpoch;
         setState(() {
           _bubbles.add(
             m.stickerPath != null
-                ? ChatBubbleData.sticker(m.stickerPath, isSelf: false)
-                : ChatBubbleData.text(m.content, isSelf: false),
+                ? ChatBubbleData.sticker(m.stickerPath, isSelf: false, createdAt: ts)
+                : ChatBubbleData.text(m.content, isSelf: false, createdAt: ts),
           );
         });
         _scrollToBottom();
@@ -106,7 +111,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     } catch (e) {
       if (mounted) {
         setState(() => _bubbles.add(
-              ChatBubbleData.text('（消息发送失败：$e）', isSelf: false),
+              ChatBubbleData.text('（消息发送失败：$e）',
+                  isSelf: false, createdAt: DateTime.now().millisecondsSinceEpoch),
             ));
       }
     } finally {
@@ -151,10 +157,24 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     controller: _scrollCtrl,
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: _bubbles.length,
-                    itemBuilder: (_, i) => ChatBubble(
-                      data: _bubbles[i],
-                      peerAvatarPath: widget.peerAvatarPath,
-                    ),
+                    itemBuilder: (_, i) {
+                      final b = _bubbles[i];
+                      final prevTs = i == 0 ? 0 : _bubbles[i - 1].createdAt;
+                      final showTime = b.createdAt > 0 &&
+                          shouldShowTime(prevTs, b.createdAt);
+                      final bubble = ChatBubble(
+                        data: b,
+                        peerAvatarPath: widget.peerAvatarPath,
+                        selfAvatarPath: _selfAvatarPath,
+                      );
+                      if (!showTime) return bubble;
+                      return Column(
+                        children: [
+                          ChatTimeDivider(timestampMs: b.createdAt),
+                          bubble,
+                        ],
+                      );
+                    },
                   ),
           ),
           _inputBar(),
@@ -173,23 +193,30 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         bottom: BorderSide(color: WeChat.divider, width: 0.5),
       ),
       titleSpacing: 0,
-      title: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            widget.personaName,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: WeChat.textPrimary,
+      title: InkWell(
+        onTap: () => Navigator.of(context)
+            .push(MaterialPageRoute(
+              builder: (_) => PersonaProfilePage(personaId: widget.personaId),
+            ))
+            .then((_) => _loadHistory()),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              widget.personaName,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: WeChat.textPrimary,
+              ),
             ),
-          ),
-          if (_typing)
-            const Text(
-              '对方正在输入…',
-              style: TextStyle(fontSize: 12, color: WeChat.textHint),
-            ),
-        ],
+            if (_typing)
+              const Text(
+                '对方正在输入…',
+                style: TextStyle(fontSize: 12, color: WeChat.textHint),
+              ),
+          ],
+        ),
       ),
       centerTitle: true,
       actions: [
@@ -212,13 +239,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => StickerManagerPage(personaId: widget.personaId),
               ));
-            } else if (v == 'moments') {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => MomentsPage(
-                  personaId: widget.personaId,
-                  personaName: widget.personaName,
-                ),
-              ));
             } else if (v == 'settings') {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SettingsPage()),
@@ -229,7 +249,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             PopupMenuItem(value: 'memory', child: Text('查看 TA 的记忆')),
             PopupMenuItem(value: 'persona', child: Text('编辑人设')),
             PopupMenuItem(value: 'stickers', child: Text('表情包')),
-            PopupMenuItem(value: 'moments', child: Text('TA 的朋友圈')),
             PopupMenuItem(value: 'settings', child: Text('设置')),
           ],
         ),

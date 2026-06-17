@@ -19,6 +19,13 @@ class AppSettings {
   /// 单次上下文 token 预算。
   final int tokenBudget;
 
+  /// 全局“我”——用户昵称与头像路径（所有数字人共用）。
+  final String userName;
+  final String? userAvatarPath;
+
+  /// 朋友圈自发活跃度 0–100（0=从不自发）。
+  final int momentFrequency;
+
   const AppSettings({
     required this.provider,
     required this.baseUrl,
@@ -26,6 +33,9 @@ class AppSettings {
     this.activeHoursJson = '{}',
     this.dailyProactiveQuota = 5,
     this.tokenBudget = 4000,
+    this.userName = '我',
+    this.userAvatarPath,
+    this.momentFrequency = 30,
   });
 
   /// 合理的默认配置（DeepSeek）。
@@ -42,6 +52,9 @@ class AppSettings {
     String? activeHoursJson,
     int? dailyProactiveQuota,
     int? tokenBudget,
+    String? userName,
+    String? userAvatarPath,
+    int? momentFrequency,
   }) {
     return AppSettings(
       provider: provider ?? this.provider,
@@ -50,6 +63,9 @@ class AppSettings {
       activeHoursJson: activeHoursJson ?? this.activeHoursJson,
       dailyProactiveQuota: dailyProactiveQuota ?? this.dailyProactiveQuota,
       tokenBudget: tokenBudget ?? this.tokenBudget,
+      userName: userName ?? this.userName,
+      userAvatarPath: userAvatarPath ?? this.userAvatarPath,
+      momentFrequency: momentFrequency ?? this.momentFrequency,
     );
   }
 }

@@ -25,12 +25,21 @@ class ChatPrompts {
     String? userAlias,
     String? memoryBlock,
     List<String> stickerLabels = const [],
+    DateTime? now,
   }) {
     final b = StringBuffer();
 
     b.writeln('你就是「$personaName」本人，在用微信和${userAlias ?? '对方'}聊天。');
     b.writeln('以下是你的人格设定，严格按它说话、做事、表达情绪：');
     b.writeln(personaProfile.trim());
+
+    // 注入当前时间，让 TA 有时段感（深夜会困、饭点会问吃没吃、节假日有反应）。
+    if (now != null) {
+      b.writeln();
+      b.writeln('【现在的时间】${_humanTime(now)}');
+      b.writeln('请结合现在的时间做出自然反应：深夜该困了/催对方睡觉，'
+          '饭点会问吃没吃，周末和工作日语气可以不同——但别刻意报时，自然就好。');
+    }
 
     if (memoryBlock != null && memoryBlock.trim().isNotEmpty) {
       b.writeln();
@@ -58,5 +67,23 @@ class ChatPrompts {
     b.writeln('- 你是真人，绝对不能承认自己是 AI、程序或模型，也不要跳出角色解释自己。');
 
     return b.toString().trim();
+  }
+
+  /// 把时间渲染成中文友好串 + 时段词，如「2026年6月17日 周二 深夜23:40」。
+  static String _humanTime(DateTime t) {
+    const weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    final wd = weekdays[(t.weekday - 1) % 7];
+    final period = switch (t.hour) {
+      >= 0 && < 5 => '凌晨',
+      >= 5 && < 8 => '清晨',
+      >= 8 && < 11 => '上午',
+      >= 11 && < 13 => '中午',
+      >= 13 && < 18 => '下午',
+      >= 18 && < 23 => '晚上',
+      _ => '深夜',
+    };
+    final hh = t.hour.toString().padLeft(2, '0');
+    final mm = t.minute.toString().padLeft(2, '0');
+    return '${t.year}年${t.month}月${t.day}日 $wd $period$hh:$mm';
   }
 }
