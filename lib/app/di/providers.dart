@@ -4,11 +4,15 @@ import '../../adapter/mock_adapter.dart';
 import '../../adapter/openai_adapter.dart';
 import '../../data/db/database.dart';
 import '../../data/repos/drift_settings_repo.dart';
+import '../../data/repos/in_memory_sticker_repo.dart';
 import '../../domain/contracts/model_adapter.dart';
+import '../../domain/contracts/output_post_processor.dart';
 import '../../domain/contracts/secret_store.dart';
 import '../../domain/contracts/settings_repo.dart';
+import '../../domain/contracts/sticker_repo.dart';
 import '../../domain/models/app_settings.dart';
 import '../../platform/secure_secret_store.dart';
+import '../chat/output_post_processor_impl.dart';
 
 /// 全局依赖注入总线（手册 INFRA-01）。
 /// 所有单例 / 工厂在此注册，UI 与应用层只通过契约类型消费。
@@ -54,3 +58,16 @@ final modelAdapterProvider = FutureProvider<ModelAdapter>((ref) async {
     model: settings.model,
   );
 });
+
+/// 表情库仓储（契约类型）。
+///
+/// 暂用内存实现（[InMemoryStickerRepo]），PERSONA-03 / drift 表情仓储就绪后
+/// 在此替换为持久化实现即可，消费方（CHAT-01/03）只认 [StickerRepo] 契约。
+final stickerRepoProvider = Provider<StickerRepo>(
+  (ref) => InMemoryStickerRepo(),
+);
+
+/// 输出后处理（手册 CHAT-03）。纯逻辑，仅依赖 [StickerRepo]。
+final outputPostProcessorProvider = Provider<OutputPostProcessor>(
+  (ref) => OutputPostProcessorImpl(ref.watch(stickerRepoProvider)),
+);
