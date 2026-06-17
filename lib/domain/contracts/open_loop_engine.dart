@@ -16,4 +16,8 @@ abstract class OpenLoopEngine {
 
   /// 过期淡出（问一两次即 expired，不连环追问）。
   Future<void> expire(OpenLoop loop);
+
+  /// 扫描某人格 pending 的钟点型回路并逐个 register（预约通知）。
+  /// 建号播种 / 记忆提炼后调用，让新登记的回路真正进入调度。
+  Future<void> processPending(int personaId);
 }

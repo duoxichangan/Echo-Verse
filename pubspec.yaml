@@ -55,6 +55,8 @@ dependencies:
 
   # 本地通知（开放回路"到点弹"）
   flutter_local_notifications: ^17.2.3
+  # 通知调度的时区（flutter_local_notifications 的 zonedSchedule 需要）
+  timezone: ^0.9.4
 
   # 文件 / 图片选择（上传 txt 与表情包）
   file_picker: ^8.1.2

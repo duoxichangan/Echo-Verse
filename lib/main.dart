@@ -1,13 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'app/di/providers.dart';
 import 'app/error_handling.dart';
+import 'app/proact/proactive_bootstrap.dart';
 import 'ui/home/home_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   installGlobalErrorHandling();
-  runApp(const ProviderScope(child: VirtualApp()));
+
+  // 用显式容器，便于启动后跑主动性补发对账。
+  final container = ProviderContainer();
+  runApp(UncontrolledProviderScope(
+    container: container,
+    child: const VirtualApp(),
+  ));
+
+  // 启动补发对账（PROACT-03）：到点未处理的开放回路补发/取消。
+  // fire-and-forget——失败不影响 UI。
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    try {
+      final bootstrap = ProactiveBootstrap(
+        db: container.read(databaseProvider),
+        engine: container.read(openLoopEngineProvider),
+      );
+      await bootstrap.run();
+    } catch (_) {/* 主动性补发失败不影响主流程 */}
+  });
 }
 
 class VirtualApp extends StatelessWidget {

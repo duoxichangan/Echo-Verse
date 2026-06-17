@@ -11,9 +11,12 @@ import '../../domain/contracts/chat_log_parser.dart';
 import '../../domain/contracts/context_assembler.dart';
 import '../../domain/contracts/memory_service.dart';
 import '../../domain/contracts/model_adapter.dart';
+import '../../domain/contracts/notification_port.dart';
+import '../../domain/contracts/open_loop_engine.dart';
 import '../../domain/contracts/output_post_processor.dart';
 import '../../domain/contracts/persona_builder.dart';
 import '../../domain/contracts/persona_repo.dart';
+import '../../domain/contracts/scheduler.dart';
 import '../../domain/contracts/secret_store.dart';
 import '../../domain/contracts/settings_repo.dart';
 import '../../domain/contracts/sticker_repo.dart';
@@ -26,6 +29,10 @@ import '../memory/drift_memory_service.dart';
 import '../ops/backup_service.dart';
 import '../persona/llm_chat_log_parser.dart';
 import '../persona/llm_persona_builder.dart';
+import '../proact/active_hours.dart';
+import '../proact/default_open_loop_engine.dart';
+import '../proact/default_scheduler.dart';
+import '../proact/local_notification_port.dart';
 
 /// 全局依赖注入总线（手册 INFRA-01）。
 /// 所有单例 / 工厂在此注册，UI 与应用层只通过契约类型消费。
@@ -134,4 +141,29 @@ final personaBuilderProvider = FutureProvider<PersonaBuilder>((ref) async {
 /// 本地导出/导入（手册 OPS-01 / R8）。
 final backupServiceProvider = Provider<BackupService>(
   (ref) => BackupService(ref.watch(databaseProvider)),
+);
+
+// ── 批次 D 主动性 ─────────────────────────────────────────
+
+/// 活动调度中枢（手册 PROACT-01，R1）。作息+配额来自当前配置。
+final schedulerProvider = Provider<Scheduler>((ref) {
+  final s = ref.watch(settingsProvider).valueOrNull;
+  return DefaultScheduler(
+    activeHours: ActiveHours.fromJson(s?.activeHoursJson ?? '{}'),
+    dailyQuota: s?.dailyProactiveQuota ?? 5,
+  );
+});
+
+/// 本地通知端口（手册 PROACT-03）。点击回调由 main 注入（这里默认空）。
+final notificationPortProvider = Provider<NotificationPort>(
+  (ref) => LocalNotificationPort(),
+);
+
+/// 开放回路引擎（手册 PROACT-02）。
+final openLoopEngineProvider = Provider<OpenLoopEngine>(
+  (ref) => DefaultOpenLoopEngine(
+    db: ref.watch(databaseProvider),
+    scheduler: ref.watch(schedulerProvider),
+    notifications: ref.watch(notificationPortProvider),
+  ),
 );
