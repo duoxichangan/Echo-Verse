@@ -13,8 +13,7 @@
 
 - `flutter analyze`：无问题
 - `flutter test`：全 34 项通过（对话/记忆逻辑 + 气泡 widget）
-- ⚠️ `flutter build apk` 当前因**网络超时**（拉不到 Google maven 的 AGP 8.11.1 / SDK Platform 35）失败，
-  与代码无关；网络恢复后应可构建（M0 时曾通过）
+- `flutter build apk --debug`：✅ 通过（已配国内镜像解决依赖超时，见工具链坑 #3/#4）
 
 ---
 
@@ -99,6 +98,7 @@
 - [x] `main.dart` 入口改为 `HomePage`
 - [x] 3 项气泡 widget 单测（HomePage/ChatPage 的真异步 drift 查询不适合 fake-async widget 测试，
       留真机/集成验证；对话逻辑已由 chat_engine_test 覆盖）
+- [x] 国内镜像配置 + 清理陈旧 Gradle 缓存 → `flutter build apk --debug` 通过（见工具链坑 #3/#4）
 
 ---
 
@@ -131,10 +131,22 @@
 2. **flutter_local_notifications 需要 core library desugaring**
    已在 `android/app/build.gradle.kts` 启用 `isCoreLibraryDesugaringEnabled` + `desugar_jdk_libs`。
 
-3. **`flutter build apk` 依赖网络拉 Google maven / Android SDK**
-   现象（2026-06-17）：`Connection timed out` —— 拉不到 AGP `8.11.1` 与 SDK Platform 35。
-   性质：纯网络问题，与 Dart/UI 代码无关（`flutter analyze` 与 `flutter test` 均通过）。
-   解法：网络通畅 / 配好代理后重试；首次成功后 Gradle 与 SDK 会本地缓存。
+3. **`flutter build apk` 依赖网络拉 Google maven / Android SDK（已解决）**
+   现象（2026-06-17）：`Connection timed out` —— 拉不到 AGP `8.11.1`、Gradle distribution、SDK Platform 35。
+   解法（已落地，构建通过）：切国内镜像 ——
+   - `android/settings.gradle.kts` 的 `pluginManagement.repositories`、`android/build.gradle.kts` 的
+     `allprojects.repositories`：在 `google()` 前加阿里云 `maven.aliyun.com/repository/{google,public,gradle-plugin}`；
+   - `android/gradle/wrapper/gradle-wrapper.properties` 的 `distributionUrl` 换腾讯云
+     `mirrors.cloud.tencent.com/gradle/gradle-8.14-all.zip`；
+   - Flutter 侧 `PUB_HOSTED_URL` / `FLUTTER_STORAGE_BASE_URL` 已是国内镜像（日志显示用 storage.flutter-io.cn）。
+
+4. **Gradle 缓存残留他机绝对路径致构建失败（已解决）**
+   现象：`Failed to create parent directory 'C:\Users\duoxichangan\...'` —— `android/.gradle` 执行历史里
+   残留了另一用户路径（项目曾在 `C:\Users\duoxichangan\Desktop` 下构建过）。
+   解法：`rm -rf android/.gradle build android/app/build` + `flutter clean` 后重建。这些目录均已被 .gitignore，
+   清理无副作用。换机/换路径后若构建报陌生绝对路径，先清这些缓存。
+
+> ✅ `flutter build apk --debug` 已通过，产物 `build/app/outputs/flutter-apk/app-debug.apk`（约 154MB，debug 正常）。
 
 ---
 

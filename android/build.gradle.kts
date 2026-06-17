@@ -1,5 +1,8 @@
 allprojects {
     repositories {
+        // 国内镜像优先（阿里云），解决依赖下载超时（见 PROGRESS.md 工具链坑 #3）
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
         google()
         mavenCentral()
     }
