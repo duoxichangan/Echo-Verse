@@ -30,7 +30,14 @@ class PersonaHints {
 /// 人格提炼契约（手册 PERSONA-02）。
 abstract class PersonaBuilder {
   /// 从已解析对话 + 用户设定提炼 L0–L5 画像（导入路径，§8.1）。
-  Future<PersonaProfile> build(ParsedLog log, PersonaHints hints);
+  ///
+  /// 超长记录走多轮凝练（map-reduce）：分批读完全部消息。[onProgress] 回调
+  /// 当前批次与总批次，供 UI 显示进度（如"正在分析 3/15 批"）。
+  Future<PersonaProfile> build(
+    ParsedLog log,
+    PersonaHints hints, {
+    void Function(int done, int total)? onProgress,
+  });
 
   /// 不导入聊天记录，直接按用户设定生成一份默认画像（直接创建路径）。
   /// 纯本地构造，不调用 LLM、不花 token。

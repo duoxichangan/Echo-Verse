@@ -80,4 +80,72 @@ class PersonaPrompts {
     b.writeln(parsedConversation);
     return b.toString();
   }
+
+  // ── 多轮凝练（map-reduce，处理超长记录）────────────────────
+
+  /// map 阶段 system：从一批对话里提炼"观察笔记"（不是完整画像，只记这批的发现）。
+  static const batchSystem = '''
+你在分批阅读一段很长的聊天记录，提炼"被复刻对象"的人格特征。
+这是其中一批，请只输出**这批里观察到的要点**（不要编造没看到的），分条列出：
+- 说话风格：口头禅、高频词、句子长短、标点/错别字/emoji 习惯、爱不爱连发短消息
+- 情感与互动：开心/生气/撒娇/安慰怎么表达、怎么开玩笑
+- 关系与身份线索：和对方什么关系、怎么称呼对方、重要的共同经历
+- 兴趣话题 / 雷区
+输出简洁的中文要点，不要 JSON、不要客套。没观察到的维度就略过。''';
+
+  static String batchUser({
+    required String targetSpeaker,
+    required int batchIndex,
+    required int batchTotal,
+    required String conversation,
+  }) {
+    return '被复刻对象：$targetSpeaker（第 $batchIndex/$batchTotal 批）\n\n$conversation';
+  }
+
+  /// reduce 阶段 system：把所有批次的观察笔记汇总成最终 L0–L5 画像 JSON。
+  /// 复用 buildSystem 的 JSON 骨架要求。
+  static const reduceSystem = '''
+你读完了一段很长聊天记录的分批观察笔记（下面汇总）。
+现在把它们综合成"被复刻对象"的完整人格画像，让 AI 能扮演得像本人。
+$_jsonSpec''';
+
+  static String reduceUser({
+    required String targetSpeaker,
+    required String mergedNotes,
+    String? relationship,
+    String? userAlias,
+    String? personalityHints,
+  }) {
+    final b = StringBuffer();
+    b.writeln('被复刻对象：$targetSpeaker');
+    if (relationship != null && relationship.isNotEmpty) {
+      b.writeln('TA 与用户的关系：$relationship');
+    }
+    if (userAlias != null && userAlias.isNotEmpty) {
+      b.writeln('TA 对用户的称呼：$userAlias');
+    }
+    if (personalityHints != null && personalityHints.isNotEmpty) {
+      b.writeln('用户补充的性格关键词：$personalityHints');
+    }
+    b.writeln();
+    b.writeln('分批观察笔记汇总：');
+    b.writeln(mergedNotes);
+    return b.toString();
+  }
+
+  /// 共享的 JSON 骨架说明（buildSystem 与 reduceSystem 复用）。
+  static const _jsonSpec = '''
+只输出一个 JSON 对象，不要解释、不要 markdown 代码块，结构如下：
+{
+  "L0_core_rules": ["3-7 条不可违背的行为规则"],
+  "L1_identity": {"who": "", "relationship": "", "user_alias": "TA怎么称呼用户", "anchors": ["重大共同记忆锚点"]},
+  "L2_style": {"catchphrases": [], "high_freq": [], "sentence": "句长/句式", "punctuation": "标点习惯", "typos": "错别字习惯", "emoji": "emoji习惯", "multi_msg": true, "formality": 1},
+  "L3_emotion": {"happy": "", "angry": "", "comfort": "", "joke": ""},
+  "L4_topics": {"loves": [], "cold": [], "knows": [], "not_knows": []},
+  "L5_boundaries": {"dislikes": [], "avoid": [], "triggers": []},
+  "examples": [{"context": "什么情境", "reply": "TA会怎么回"}],
+  "confidence": {"L0": 0.0, "L1": 0.0, "L2": 0.0, "L3": 0.0, "L4": 0.0, "L5": 0.0}
+}
+要点：写具体行为规则而非形容词；L0 必含"绝不承认自己是 AI / 不跳出角色"；
+材料不足的层 confidence 给低分；formality 取 1(很随意)到 5(很正式)；严格只输出 JSON。''';
 }

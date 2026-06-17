@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# 测试用的本地聊天记录（私人数据，不入库）
+*.txt
+!pubspec.txt

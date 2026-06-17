@@ -3,11 +3,13 @@ import '../../domain/contracts/model_adapter.dart';
 import '../../domain/models/chat_message.dart';
 import '../../prompts/persona_prompts.dart';
 import 'json_extract.dart';
+import 'local_chat_log_parser.dart';
 
 /// 微信 txt 解析实现（手册 PERSONA-01 / 说明书 §7.4）。
 ///
-/// 流程：采样上限裁剪 → 全交 LLM 解析为结构化 JSON → 转 [ParsedLog]。
-/// 解析失败兜底为“整段当一条”，保证建号不中断。
+/// 流程：**先本地结构化解析**（规整的「时间 '说话人'」格式直接全量切分，
+/// 不花 token、不丢消息、不受 LLM 输出长度限制）；本地解析不出（杂乱文本/
+/// 复制粘贴/OCR）才回退到 LLM，并对超长文本采样。LLM 也失败时兜底整段一条。
 class LlmChatLogParser implements ChatLogParser {
   final ModelAdapter adapter;
 
@@ -20,7 +22,11 @@ class LlmChatLogParser implements ChatLogParser {
       return const ParsedLog(messages: [], speakers: [], span: '');
     }
 
-    // 采样上限（§7.4）：按行数裁，取最近 maxLines 行。
+    // 1) 本地结构化解析优先：规整导出格式直接全量切分（处理上万条）。
+    final local = LocalChatLogParser.tryParse(text);
+    if (local != null) return local;
+
+    // 2) 本地解析不出 → 回退 LLM。超长按行采样上限，取最近 maxLines 行。
     final lines = text.split(RegExp(r'\r?\n'));
     final sampled = lines.length > opts.maxLines;
     final usedText = sampled

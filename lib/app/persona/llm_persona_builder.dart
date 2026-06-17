@@ -7,34 +7,88 @@ import '../../prompts/persona_prompts.dart';
 import 'json_extract.dart';
 
 /// 人格提炼实现（手册 PERSONA-02 / 说明书 §8.1）。
+///
+/// 超长记录走 map-reduce 多轮凝练：分批读完全部消息（每批 [batchSize] 条），
+/// 每批提炼"观察笔记"(map)，再把所有笔记汇总成最终 L0–L5 画像(reduce)。
+/// 短记录（≤1 批）直接单次提炼。
 class LlmPersonaBuilder implements PersonaBuilder {
   final ModelAdapter adapter;
 
-  const LlmPersonaBuilder(this.adapter);
+  /// 每批消息条数。批太大会超 LLM 输入上限，太小则调用次数多。
+  final int batchSize;
+
+  const LlmPersonaBuilder(this.adapter, {this.batchSize = 300});
 
   @override
-  Future<PersonaProfile> build(ParsedLog log, PersonaHints hints) async {
+  Future<PersonaProfile> build(
+    ParsedLog log,
+    PersonaHints hints, {
+    void Function(int done, int total)? onProgress,
+  }) async {
     final target = hints.targetSpeaker ??
         (log.speakers.isNotEmpty ? log.speakers.first : hints.name);
 
-    final buf = StringBuffer();
-    await for (final chunk in adapter.chat(
-      system: PersonaPrompts.buildSystem,
-      messages: [
-        Msg.user(PersonaPrompts.buildUser(
-          parsedConversation: log.toConversationText(),
+    final msgs = log.messages;
+    Map<String, dynamic>? json;
+
+    if (msgs.length <= batchSize) {
+      // 短记录：单次提炼。
+      onProgress?.call(0, 1);
+      json = await _completeJson(
+        system: PersonaPrompts.buildSystem,
+        user: PersonaPrompts.buildUser(
+          parsedConversation: log.toConversationText(maxMessages: batchSize),
           targetSpeaker: target,
           relationship: hints.relationship,
           userAlias: hints.userAlias,
           personalityHints: hints.personalityHints,
-        )),
-      ],
-      opts: const ChatOpts(temperature: 0.7),
-    )) {
-      buf.write(chunk);
+        ),
+        temperature: 0.7,
+      );
+      onProgress?.call(1, 1);
+    } else {
+      // 长记录：map-reduce 多轮凝练。
+      final batches = _chunk(msgs, batchSize);
+      // 总步数 = 各批 map + 1 次 reduce。
+      final total = batches.length + 1;
+      final notes = StringBuffer();
+
+      for (var i = 0; i < batches.length; i++) {
+        onProgress?.call(i, total);
+        final convo = _conversationOf(batches[i]);
+        final note = await _completeText(
+          system: PersonaPrompts.batchSystem,
+          user: PersonaPrompts.batchUser(
+            targetSpeaker: target,
+            batchIndex: i + 1,
+            batchTotal: batches.length,
+            conversation: convo,
+          ),
+          temperature: 0.4,
+        );
+        if (note.trim().isNotEmpty) {
+          notes.writeln('— 第 ${i + 1} 批观察 —');
+          notes.writeln(note.trim());
+          notes.writeln();
+        }
+      }
+
+      // reduce：汇总所有观察笔记成最终画像。
+      onProgress?.call(batches.length, total);
+      json = await _completeJson(
+        system: PersonaPrompts.reduceSystem,
+        user: PersonaPrompts.reduceUser(
+          targetSpeaker: target,
+          mergedNotes: notes.toString(),
+          relationship: hints.relationship,
+          userAlias: hints.userAlias,
+          personalityHints: hints.personalityHints,
+        ),
+        temperature: 0.6,
+      );
+      onProgress?.call(total, total);
     }
 
-    final json = extractJsonObject(buf.toString());
     if (json == null) {
       // 提炼失败：退回按设定造的默认画像，保证建号不中断。
       return buildFromHints(hints);
@@ -95,5 +149,51 @@ class LlmPersonaBuilder implements PersonaBuilder {
         anchors: id.anchors,
       ),
     );
+  }
+
+  // ── LLM 调用辅助 ──────────────────────────────────────────
+
+  Future<String> _completeText({
+    required String system,
+    required String user,
+    required double temperature,
+  }) async {
+    final buf = StringBuffer();
+    await for (final c in adapter.chat(
+      system: system,
+      messages: [Msg.user(user)],
+      opts: ChatOpts(temperature: temperature),
+    )) {
+      buf.write(c);
+    }
+    return buf.toString();
+  }
+
+  Future<Map<String, dynamic>?> _completeJson({
+    required String system,
+    required String user,
+    required double temperature,
+  }) async {
+    final raw = await _completeText(
+        system: system, user: user, temperature: temperature);
+    return extractJsonObject(raw);
+  }
+
+  /// 把消息列表按 [size] 分批。
+  List<List<ParsedMessage>> _chunk(List<ParsedMessage> msgs, int size) {
+    final out = <List<ParsedMessage>>[];
+    for (var i = 0; i < msgs.length; i += size) {
+      out.add(msgs.sublist(i, (i + size).clamp(0, msgs.length)));
+    }
+    return out;
+  }
+
+  /// 一批消息拼成可读对话文本。
+  String _conversationOf(List<ParsedMessage> batch) {
+    final b = StringBuffer();
+    for (final m in batch) {
+      b.writeln('${m.speaker}: ${m.content}');
+    }
+    return b.toString();
   }
 }

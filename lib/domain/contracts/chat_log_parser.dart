@@ -43,9 +43,16 @@ class ParsedLog {
   });
 
   /// 把对话拼成可读文本，喂给提炼 prompt。
-  String toConversationText() {
+  ///
+  /// [maxMessages] 限制带入的条数（提炼人格够用即可，避免超 LLM 上下文）：
+  /// 本地可解析出上万条，但全量喂给提炼会超 token——取最近 [maxMessages] 条
+  /// （最近的更能反映当前语气）。
+  String toConversationText({int maxMessages = 400}) {
+    final used = messages.length > maxMessages
+        ? messages.sublist(messages.length - maxMessages)
+        : messages;
     final b = StringBuffer();
-    for (final m in messages) {
+    for (final m in used) {
       final t = m.time.isEmpty ? '' : '[${m.time}] ';
       b.writeln('$t${m.speaker}: ${m.content}');
     }

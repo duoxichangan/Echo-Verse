@@ -25,6 +25,7 @@ enum _Step { pick, parsing, review, building }
 class _ImportPersonaPageState extends ConsumerState<ImportPersonaPage> {
   _Step _step = _Step.pick;
   String? _error;
+  String? _buildProgress; // 多轮凝练进度文案
 
   ParsedLog? _log;
   String? _fileName;
@@ -90,7 +91,15 @@ class _ImportPersonaPageState extends ConsumerState<ImportPersonaPage> {
         userAlias: _empty(_alias.text),
         personalityHints: _empty(_traits.text),
       );
-      final profile = await builder.build(log, hints);
+      final profile = await builder.build(
+        log,
+        hints,
+        onProgress: (done, total) {
+          if (mounted) {
+            setState(() => _buildProgress = total > 1 ? '正在提炼人格… $done/$total' : null);
+          }
+        },
+      );
       await ref.read(personaRepoProvider).create(
             name: hints.name,
             personaJson: profile.toJsonString(),
@@ -128,7 +137,9 @@ class _ImportPersonaPageState extends ConsumerState<ImportPersonaPage> {
         _Step.pick => _pickView(),
         _Step.parsing => _busy('正在解析聊天记录…\n（条数多时会花一点 token，请稍候）'),
         _Step.review => _reviewView(),
-        _Step.building => _busy('正在提炼人格画像…'),
+        _Step.building => _busy(_buildProgress == null
+            ? '正在提炼人格画像…'
+            : '$_buildProgress\n（读完全部记录、逐批凝练，请稍候）'),
       },
     );
   }
