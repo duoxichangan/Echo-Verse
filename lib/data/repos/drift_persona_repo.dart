@@ -53,6 +53,7 @@ class DriftPersonaRepo implements PersonaRepo {
   }
 
   /// 新建一个人格，返回自增 id。建号流水线（PERSONA-02）产出画像后调用。
+  @override
   Future<int> create({
     required String name,
     required String personaJson,

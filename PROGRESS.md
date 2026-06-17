@@ -9,10 +9,10 @@
 ## 当前状态
 
 **已完成：批次 A / M0「工程地基可运行」** — 提交 `65dda0d`
-**进行中：批次 B / MVP 核心** — 对话闭环 + UI-01 微信聊天页（1:1 复刻）
+**进行中：批次 B / MVP 核心** — 对话闭环 + UI-01 微信聊天页 + PERSONA-01/02 建号（解析/提炼/直接创建）
 
 - `flutter analyze`：无问题
-- `flutter test`：全 34 项通过（对话/记忆逻辑 + 气泡 widget）
+- `flutter test`：全 50 项通过
 - `flutter build apk --debug`：✅ 通过（已配国内镜像解决依赖超时，见工具链坑 #3/#4）
 
 ---
@@ -100,6 +100,22 @@
       留真机/集成验证；对话逻辑已由 chat_engine_test 覆盖）
 - [x] 国内镜像配置 + 清理陈旧 Gradle 缓存 → `flutter build apk --debug` 通过（见工具链坑 #3/#4）
 
+### PERSONA-01/02 建号（解析 + 提炼 + 直接创建，逻辑全做 / UI 先做创建路径）
+- [x] `lib/domain/models/persona_profile.dart`：L0–L5 结构化画像模型（§8.1 骨架），
+      宽容 JSON 编解码（缺字段给默认、坏输入回退空骨架）、`empty()` 预置 L0 铁律
+- [x] `lib/prompts/persona_prompts.dart`：§7.4 解析 prompt + §8.1 提炼 prompt（只输出 JSON 约束）
+- [x] `lib/app/persona/json_extract.dart`：从 LLM 文本稳健抠 JSON（剥 ```代码块 / 取 {..} / 兜底）
+- [x] `lib/app/persona/llm_chat_log_parser.dart`（PERSONA-01）：全交 LLM 解析（§7.4）→ ParsedLog，
+      最近 N 行采样上限 + sampled 标记，非 JSON 兜底整段一条
+- [x] `lib/app/persona/llm_persona_builder.dart`（PERSONA-02）：`build` 调 LLM 提炼画像
+      （L0 兜底补“不承认 AI”、用户硬设定覆盖模型猜测的 L1）；`buildFromHints` 不调 LLM
+      按设定本地造默认画像（“不导入也能建”路径）
+- [x] `lib/ui/persona/create_persona_page.dart`：建号向导（填昵称/关系/称呼/性格词 → 创建），
+      含 txt 导入入口占位（解析逻辑已就绪，UI 下轮接）
+- [x] HomePage 接入：右上「+」与空态「创建数字人」进创建页；示例「小桃」降为快捷体验
+- [x] `PersonaRepo` 契约加 `create`；DI 注册 `chatLogParserProvider` / `personaBuilderProvider`
+- [x] 16 项单测（json 抽取 / 画像编解码往返 / 解析器结构+采样+兜底 / 提炼 build+buildFromHints+L0兜底+硬设定覆盖）
+
 ---
 
 ## 待办（批次 B / MVP 核心 · M1–M3，尚未开工）
@@ -107,14 +123,13 @@
 > 多条线可并行，彼此只靠已冻结的契约 / Mock 耦合。
 
 - **对话线**：~~`CHAT-03`~~ ✅ ~~`CHAT-01` 上下文组装~~ ✅ ~~`CHAT-02` 对话生成~~ ✅ → 接真 key 端到端验证
-- **人格线**：`PERSONA-01` 微信 txt 解析 → `PERSONA-02` 人格提炼 → ~~`PERSONA-03` 画像存储~~ ✅（编辑器 UI 待 M4）
+- **人格线**：~~`PERSONA-01` txt 解析~~ ✅ ~~`PERSONA-02` 人格提炼（含直接创建）~~ ✅ → `PERSONA-03` 编辑器 UI（UI-03，M4）
 - **记忆线**：~~`MEM-01` 读取 / `MEM-03` 衰减检索~~ ✅ → `MEM-02` 写入提炼（依赖 ModelAdapter + OpenLoopEngine）
-- **界面线**：~~`UI-01` 聊天页~~ ✅（含会话列表雏形）→ `UI-02` 建号向导（替换示例 persona 入口）
+- **界面线**：~~`UI-01` 聊天页~~ ✅ ~~`UI-02` 建号向导（创建路径）~~ ✅ → txt 导入向导 UI（解析逻辑已就绪）/ `UI-03` 画像编辑器
 
-**当前断点**：能在微信式界面里打字、收到分条回复、看历史；但**还不会自动写记忆**（每轮聊完不沉淀事实），
-且**示例 persona 是开发占位**（真正建号 PERSONA-01/02 未做）。
-下一步二选一：① `MEM-02` 记忆写入（聊着聊着自动记住事，闭合「记忆像真人」）；
-② `PERSONA-01/02` 建号（导入真实聊天记录提炼人格，替换示例「小桃」）。
+**当前断点**：能创建数字人（填设定 / 逻辑上也能导入 txt 提炼）、在微信界面聊天、读历史记忆；
+但**聊完不会自动写记忆**（MEM-02），**txt 导入只有逻辑没接 UI**，**画像只能在创建时填、还不能逐层编辑**（UI-03/M4）。
+下一步候选：① `MEM-02` 记忆写入（闭合「记忆像真人」）；② txt 导入向导 UI（把已就绪的解析/提炼接进界面）；③ `UI-03` 画像编辑器。
 
 **推荐起步点**：`CHAT-03`（纯函数、不依赖 LLM、单测友好）+ `PERSONA-01`（靠 MockAdapter 可离线验证）。
 

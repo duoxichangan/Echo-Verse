@@ -7,6 +7,7 @@ import '../../data/db/database.dart';
 import '../../data/repos/drift_persona_repo.dart';
 import '../chat/chat_page.dart';
 import '../chat/wechat_theme.dart';
+import '../persona/create_persona_page.dart';
 import '../settings/settings_page.dart';
 
 /// 会话列表（UI-01 的一屏，1:1 复刻微信首页）。
@@ -109,6 +110,11 @@ class _HomePageState extends ConsumerState<HomePage> {
         centerTitle: true,
         actions: [
           IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            tooltip: '创建数字人',
+            onPressed: _openCreate,
+          ),
+          IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: '设置',
             onPressed: () => Navigator.of(context).push(
@@ -125,6 +131,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  Future<void> _openCreate() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const CreatePersonaPage()),
+    );
+    if (created == true) await _load();
+  }
+
   Widget _empty() {
     return Center(
       child: Column(
@@ -135,15 +148,20 @@ class _HomePageState extends ConsumerState<HomePage> {
           const Text('还没有数字人', style: TextStyle(color: WeChat.textHint)),
           const SizedBox(height: 4),
           const Text(
-            '建号流程（导入聊天记录）还在路上，\n先创建一个示例数字人来体验对话',
+            '创建一个数字人开始聊天\n（可直接填设定，也可导入聊天记录提炼）',
             textAlign: TextAlign.center,
             style: TextStyle(color: WeChat.textHint, fontSize: 13),
           ),
           const SizedBox(height: 20),
           FilledButton(
-            onPressed: _seeding ? null : _seedExample,
+            onPressed: _openCreate,
             style: FilledButton.styleFrom(backgroundColor: WeChat.brand),
-            child: Text(_seeding ? '创建中…' : '创建示例数字人「小桃」'),
+            child: const Text('创建数字人'),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: _seeding ? null : _seedExample,
+            child: Text(_seeding ? '创建中…' : '快速体验示例「小桃」'),
           ),
         ],
       ),
