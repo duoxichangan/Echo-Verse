@@ -15,8 +15,12 @@
 
 > 🎉 四个 Phase（MVP / 主动性 / 社交）全部落地。Phase 4 扩展（多人/群聊/iOS/云备份/Claude适配器/embedding）按需。
 
+> 修复（提交 `861f88a`）：txt 解析改「本地优先 + LLM 兜底 + 多轮凝练」——规整导出格式
+> （`时间 '说话人'` 头）本地正则全量切分（实测 17220 行→5735 条全部识别），超长记录提炼走
+> map-reduce 分批读完全部。此前「全交 LLM 逐条重输出」会因输出截断只识别出 1 条。
+
 - `flutter analyze`：无问题
-- `flutter test`：全 81 项通过
+- `flutter test`：全 89 项通过
 - `flutter build apk --debug`：✅ 通过
 
 ---
