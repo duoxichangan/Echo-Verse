@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/di/providers.dart';
 import '../../domain/contracts/persona_builder.dart';
 import '../chat/wechat_theme.dart';
+import 'import_persona_page.dart';
 
 /// 建号向导（UI-02 的「直接创建」路径，手册 PERSONA-02 §11.2）。
 ///
@@ -83,11 +84,17 @@ class _CreatePersonaPageState extends ConsumerState<CreatePersonaPage> {
             child: ListTile(
               leading: const Icon(Icons.upload_file, color: WeChat.brand),
               title: const Text('从微信聊天记录导入'),
-              subtitle: const Text('提炼出“聊起来像本人”的人格（即将开放）'),
+              subtitle: const Text('提炼出“聊起来像本人”的人格'),
               trailing: const Icon(Icons.chevron_right, color: WeChat.textHint),
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('导入解析已就绪，界面下个版本接入')),
-              ),
+              onTap: () async {
+                final created = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(builder: (_) => const ImportPersonaPage()),
+                );
+                // 导入成功则把结果透传回 HomePage（它会刷新列表）。
+                if (created == true && context.mounted) {
+                  Navigator.of(context).pop(true);
+                }
+              },
             ),
           ),
           const SizedBox(height: 16),

@@ -7,6 +7,7 @@ import '../../data/db/database.dart';
 import '../memory/memory_panel_page.dart';
 import '../persona/persona_editor_page.dart';
 import '../settings/settings_page.dart';
+import '../sticker/sticker_manager_page.dart';
 import 'chat_bubble.dart';
 import 'wechat_theme.dart';
 
@@ -200,6 +201,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => PersonaEditorPage(personaId: widget.personaId),
               ));
+            } else if (v == 'stickers') {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => StickerManagerPage(personaId: widget.personaId),
+              ));
             } else if (v == 'settings') {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SettingsPage()),
@@ -209,6 +214,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           itemBuilder: (_) => const [
             PopupMenuItem(value: 'memory', child: Text('查看 TA 的记忆')),
             PopupMenuItem(value: 'persona', child: Text('编辑人设')),
+            PopupMenuItem(value: 'stickers', child: Text('表情包')),
             PopupMenuItem(value: 'settings', child: Text('设置')),
           ],
         ),
@@ -256,7 +262,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             ),
           ),
           const SizedBox(width: 6),
-          _circleIcon(Icons.emoji_emotions_outlined),
+          _circleIcon(Icons.emoji_emotions_outlined, onTap: () {
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => StickerManagerPage(personaId: widget.personaId),
+            ));
+          }),
           const SizedBox(width: 6),
           if (hasText)
             _sendButton()
@@ -267,10 +277,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     );
   }
 
-  Widget _circleIcon(IconData icon) {
+  Widget _circleIcon(IconData icon, {VoidCallback? onTap}) {
     return IconButton(
       icon: Icon(icon, size: 28, color: const Color(0xFF54545A)),
-      onPressed: () {}, // 语音/表情面板/更多：UI 占位，后续接入
+      onPressed: onTap ?? () {}, // 无回调的为 UI 占位（语音等后续接入）
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
     );

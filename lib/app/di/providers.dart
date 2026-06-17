@@ -5,7 +5,7 @@ import '../../adapter/openai_adapter.dart';
 import '../../data/db/database.dart';
 import '../../data/repos/drift_persona_repo.dart';
 import '../../data/repos/drift_settings_repo.dart';
-import '../../data/repos/in_memory_sticker_repo.dart';
+import '../../data/repos/drift_sticker_repo.dart';
 import '../../domain/contracts/chat_engine.dart';
 import '../../domain/contracts/chat_log_parser.dart';
 import '../../domain/contracts/context_assembler.dart';
@@ -23,6 +23,7 @@ import '../chat/chat_engine_impl.dart';
 import '../chat/context_assembler_impl.dart';
 import '../chat/output_post_processor_impl.dart';
 import '../memory/drift_memory_service.dart';
+import '../ops/backup_service.dart';
 import '../persona/llm_chat_log_parser.dart';
 import '../persona/llm_persona_builder.dart';
 
@@ -71,12 +72,9 @@ final modelAdapterProvider = FutureProvider<ModelAdapter>((ref) async {
   );
 });
 
-/// 表情库仓储（契约类型）。
-///
-/// 暂用内存实现（[InMemoryStickerRepo]），PERSONA-03 / drift 表情仓储就绪后
-/// 在此替换为持久化实现即可，消费方（CHAT-01/03）只认 [StickerRepo] 契约。
+/// 表情库仓储（手册 StickerRepo / 说明书 §16）。drift 落库，可上传/命名/删除。
 final stickerRepoProvider = Provider<StickerRepo>(
-  (ref) => InMemoryStickerRepo(),
+  (ref) => DriftStickerRepo(ref.watch(databaseProvider)),
 );
 
 /// 输出后处理（手册 CHAT-03）。纯逻辑，仅依赖 [StickerRepo]。
@@ -132,3 +130,8 @@ final personaBuilderProvider = FutureProvider<PersonaBuilder>((ref) async {
   final adapter = await ref.watch(modelAdapterProvider.future);
   return LlmPersonaBuilder(adapter);
 });
+
+/// 本地导出/导入（手册 OPS-01 / R8）。
+final backupServiceProvider = Provider<BackupService>(
+  (ref) => BackupService(ref.watch(databaseProvider)),
+);

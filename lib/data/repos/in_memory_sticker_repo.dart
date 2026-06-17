@@ -29,4 +29,31 @@ class InMemoryStickerRepo implements StickerRepo {
   Future<String?> pathByLabel(int personaId, String label) async {
     return perPersona[personaId]?[label] ?? global[label];
   }
+
+  @override
+  Future<List<StickerItem>> listStickers(int personaId) async {
+    var id = 0;
+    final out = <StickerItem>[
+      for (final e in global.entries)
+        StickerItem(id: --id, personaId: null, filePath: e.value, label: e.key),
+      for (final e in (perPersona[personaId] ?? const {}).entries)
+        StickerItem(id: --id, personaId: personaId, filePath: e.value, label: e.key),
+    ];
+    return out;
+  }
+
+  @override
+  Future<int> addSticker({int? personaId, required String filePath, required String label}) async {
+    if (personaId == null) {
+      global[label] = filePath;
+    } else {
+      (perPersona[personaId] ??= {})[label] = filePath;
+    }
+    return 0;
+  }
+
+  @override
+  Future<void> deleteSticker(int id) async {
+    // 内存版不维护数字 id；测试不依赖删除。
+  }
 }
