@@ -28,8 +28,22 @@ class DriftStickerRepo implements StickerRepo {
   @override
   Future<String?> pathByLabel(int personaId, String label) async {
     final rows = await _visible(personaId);
+    final want = label.trim();
+    // 1) 精确匹配。
     for (final r in rows) {
-      if (r.label == label) return r.filePath;
+      if (r.label == want) return r.filePath;
+    }
+    // 2) 容错：忽略大小写/空白。
+    final norm = want.toLowerCase();
+    for (final r in rows) {
+      if (r.label.trim().toLowerCase() == norm) return r.filePath;
+    }
+    // 3) 容错：互相包含（模型说“开心笑”而库里是“开心”）。
+    for (final r in rows) {
+      final l = r.label.trim().toLowerCase();
+      if (l.isNotEmpty && (l.contains(norm) || norm.contains(l))) {
+        return r.filePath;
+      }
     }
     return null;
   }

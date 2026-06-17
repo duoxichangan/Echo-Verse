@@ -48,11 +48,19 @@ void main() {
       expect(out[1].stickerPath, '/stickers/smile.png');
     });
 
-    test('未命中库的表情标记保留为普通文本（不丢语义）', () async {
-      final out = await p.process(_stream('[表情:不存在的]'), personaId: 1);
+    test('未命中库的短标签降级成纯文字（不显示 [表情:] 穿帮）', () async {
+      final out = await p.process(_stream('[表情:害羞]'), personaId: 1);
       expect(out.length, 1);
       expect(out.first.kind, RenderedKind.text);
-      expect(out.first.content, '[表情:不存在的]');
+      expect(out.first.content, '害羞'); // 降级成纯词，不带 [表情:]
+    });
+
+    test('未命中且像路径的标签直接丢弃（绝不输出路径）', () async {
+      final out = await p.process(
+          _stream('在的‹SEP›[表情:/data/app/st_123.png]'), personaId: 1);
+      // 路径样标签被丢弃，只剩文本“在的”。
+      expect(out.length, 1);
+      expect(out.first.content, '在的');
     });
 
     test('全角冒号的 [表情：label] 也能解析', () async {
@@ -63,9 +71,9 @@ void main() {
 
     test('表情库对其它 persona 不可见（隔离）', () async {
       final out = await p.process(_stream('[表情:抱抱]'), personaId: 2);
-      // persona 2 没有“抱抱”，落回文本。
+      // persona 2 没有“抱抱”，降级成纯文字（不渲染图、不穿帮）。
       expect(out.first.kind, RenderedKind.text);
-      expect(out.first.content, '[表情:抱抱]');
+      expect(out.first.content, '抱抱');
     });
 
     test('空流 / 纯空白 → 空列表', () async {

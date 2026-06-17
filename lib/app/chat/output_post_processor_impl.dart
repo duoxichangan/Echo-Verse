@@ -93,7 +93,7 @@ class OutputPostProcessorImpl implements OutputPostProcessor {
     for (var i = 0; i < parts.length; i++) {
       final part = parts[i];
 
-      // 表情：整条恰为 [表情:label] 且命中库才渲染，否则当文本。
+      // 表情：整条恰为 [表情:label] 且命中库才渲染，否则不穿帮地处理。
       final m = _stickerExp.firstMatch(part);
       if (m != null) {
         final label = m.group(1)!;
@@ -104,7 +104,15 @@ class OutputPostProcessorImpl implements OutputPostProcessor {
           out.add(RenderedMessage.sticker(path, delayMs: delay));
           continue;
         }
-        // 未命中：落到下方按文本处理（保留 [表情:xxx] 原文）。
+        // 未命中库：不能把 [表情:xxx] 原文/路径丢给用户看（会穿帮）。
+        // 若标签是个干净的短词，降级成纯文字（如“[表情:害羞]”→“害羞”）；
+        // 若像文件路径/含奇怪符号，直接丢弃这一条。
+        final clean = _degradeLabel(label);
+        if (clean == null) continue; // 丢弃
+        final delay = _capDelay(_delayFor(clean, isFirst: i == 0), accumulated);
+        accumulated += delay;
+        out.add(RenderedMessage.text(clean, delayMs: delay));
+        continue;
       }
 
       // 文本：剥掉 [记住:xxx] 内部标记（不展示给用户），剥后为空则跳过。
@@ -139,6 +147,19 @@ class OutputPostProcessorImpl implements OutputPostProcessor {
       if (after.isNotEmpty) out.add(after);
     }
     return out;
+  }
+
+  /// 未命中库的表情标签降级：
+  /// - 像文件路径 / 含奇怪符号 / 太长 → 返回 null（丢弃，绝不显示给用户）；
+  /// - 是个干净短词（情绪词）→ 返回该词本身，当普通文字显示。
+  String? _degradeLabel(String label) {
+    final l = label.trim();
+    if (l.isEmpty) return null;
+    // 含路径分隔符、点扩展名、空格过多、明显非情绪词的，丢弃。
+    if (l.contains('/') || l.contains('\\') || l.contains('.') || l.length > 8) {
+      return null;
+    }
+    return l;
   }
 
   /// 单条延迟：字数 × 速度，夹在 [minDelayMs, maxDelayMs]；首条加思考延迟。
