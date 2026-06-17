@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/di/providers.dart';
 import '../../data/db/database.dart';
 import '../memory/memory_panel_page.dart';
+import '../moments/moments_page.dart';
 import '../persona/persona_editor_page.dart';
 import '../settings/settings_page.dart';
 import '../sticker/sticker_manager_page.dart';
@@ -207,6 +208,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => StickerManagerPage(personaId: widget.personaId),
               ));
+            } else if (v == 'moments') {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => MomentsPage(
+                  personaId: widget.personaId,
+                  personaName: widget.personaName,
+                ),
+              ));
             } else if (v == 'settings') {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SettingsPage()),
@@ -217,6 +225,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             PopupMenuItem(value: 'memory', child: Text('查看 TA 的记忆')),
             PopupMenuItem(value: 'persona', child: Text('编辑人设')),
             PopupMenuItem(value: 'stickers', child: Text('表情包')),
+            PopupMenuItem(value: 'moments', child: Text('TA 的朋友圈')),
             PopupMenuItem(value: 'settings', child: Text('设置')),
           ],
         ),

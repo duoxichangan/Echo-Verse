@@ -19,6 +19,7 @@ import '../../domain/contracts/persona_repo.dart';
 import '../../domain/contracts/scheduler.dart';
 import '../../domain/contracts/secret_store.dart';
 import '../../domain/contracts/settings_repo.dart';
+import '../../domain/contracts/social_service.dart';
 import '../../domain/contracts/sticker_repo.dart';
 import '../../domain/models/app_settings.dart';
 import '../../platform/secure_secret_store.dart';
@@ -33,6 +34,7 @@ import '../proact/active_hours.dart';
 import '../proact/default_open_loop_engine.dart';
 import '../proact/default_scheduler.dart';
 import '../proact/local_notification_port.dart';
+import '../social/default_social_service.dart';
 
 /// 全局依赖注入总线（手册 INFRA-01）。
 /// 所有单例 / 工厂在此注册，UI 与应用层只通过契约类型消费。
@@ -167,3 +169,17 @@ final openLoopEngineProvider = Provider<OpenLoopEngine>(
     notifications: ref.watch(notificationPortProvider),
   ),
 );
+
+// ── 批次 E 社交 ───────────────────────────────────────────
+
+/// 社交服务（手册 SOCIAL-01/02/03，Phase 3）。依赖 modelAdapter。
+final socialServiceProvider = FutureProvider<SocialService>((ref) async {
+  final adapter = await ref.watch(modelAdapterProvider.future);
+  return DefaultSocialService(
+    db: ref.watch(databaseProvider),
+    adapter: adapter,
+    personaRepo: ref.watch(personaRepoProvider),
+    memoryService: ref.watch(memoryServiceProvider),
+    scheduler: ref.watch(schedulerProvider),
+  );
+});
