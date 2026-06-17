@@ -209,8 +209,35 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
               ))
               .then((_) => _load()),
+          onLongPress: () => _confirmDelete(p),
         );
       },
     );
+  }
+
+  Future<void> _confirmDelete(Persona p) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('删除「${p.name}」？'),
+        content: const Text('会永久删除 TA 的所有聊天、记忆、表情和朋友圈，不可恢复。'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('删除', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await ref.read(personaRepoProvider).delete(p.id);
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('已删除「${p.name}」')));
+      }
+    }
   }
 }

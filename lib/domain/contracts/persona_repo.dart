@@ -16,4 +16,7 @@ abstract class PersonaRepo {
     String? userAlias,
     String? relationship,
   });
+
+  /// 删除一个人格，并级联清掉其全部数据（消息/事实/关系/回路/表情/朋友圈）。
+  Future<void> delete(int id);
 }

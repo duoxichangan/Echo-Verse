@@ -108,5 +108,38 @@ void main() {
       final total = out.fold<int>(0, (s, m) => s + m.delayMs);
       expect(total, lessThanOrEqualTo(1000));
     });
+
+    // ── 三个问题修复回归 ──────────────────────────────────
+
+    test('句中表情被拆成独立的 sticker 消息（问题 2）', () async {
+      final repo = InMemoryStickerRepo(perPersona: {
+        1: {'开心': '/s/happy.png'},
+      });
+      final pp = OutputPostProcessorImpl(repo);
+      // 表情夹在句子中间，没有分隔符。
+      final out = await pp.process(_stream('好呀[表情:开心]那走吧'), personaId: 1);
+      expect(out.length, 3);
+      expect(out[0].kind, RenderedKind.text);
+      expect(out[0].content, '好呀');
+      expect(out[1].kind, RenderedKind.sticker);
+      expect(out[1].stickerPath, '/s/happy.png');
+      expect(out[2].kind, RenderedKind.text);
+      expect(out[2].content, '那走吧');
+    });
+
+    test('没有 ‹SEP› 但有换行时按行分条（问题 3）', () async {
+      final pp = OutputPostProcessorImpl(InMemoryStickerRepo());
+      final out = await pp.process(_stream('在吗\n我在的\n你说'), personaId: 1);
+      expect(out.length, 3);
+      expect(out.map((m) => m.content), ['在吗', '我在的', '你说']);
+    });
+
+    test('展示剥掉 [记住:x] 标记，rawContent 保留供落库/MEM-02', () async {
+      final pp = OutputPostProcessorImpl(InMemoryStickerRepo());
+      final out = await pp.process(_stream('好的我记住啦[记住:用户喜欢爬山]'), personaId: 1);
+      expect(out.length, 1);
+      expect(out.first.content, '好的我记住啦'); // 展示无标记
+      expect(out.first.rawContent, contains('[记住:用户喜欢爬山]')); // 落库保留
+    });
   });
 }

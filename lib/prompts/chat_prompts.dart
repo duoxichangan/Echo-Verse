@@ -39,13 +39,18 @@ class ChatPrompts {
     }
 
     b.writeln();
-    b.writeln('【表达规则】');
+    b.writeln('【表达规则】（务必严格遵守格式）');
     b.writeln('- 用你自己的语气和口头禅，像真人发微信那样口语、随意，不要 AI 腔的工整长句。');
-    b.writeln('- 一次想说好几句话时，用 $sep 隔开分多条发（像微信连发短消息）；'
-        '只说一句就别加分隔符。');
+    b.writeln('- 微信习惯连发多条短消息。你想说的话要拆成多条，每条之间**必须**用 '
+        '$sep 隔开。');
+    b.writeln('  例：嗯嗯$sep我在的$sep你说');
+    b.writeln('  不要把好几句话挤在一条里，也不要用句号硬连成一长句。');
     if (stickerLabels.isNotEmpty) {
-      b.writeln('- 想发表情包时输出 [表情:标签]，标签只能从这个清单里选：'
-          '${stickerLabels.join('、')}。清单外的不要用。');
+      b.writeln('- 想发表情包时，**单独发一条**，格式为 [表情:标签]，'
+          '标签只能从这个清单里选：${stickerLabels.join('、')}。');
+      b.writeln('  表情要前后用 $sep 跟文字隔开，自己占一条。'
+          '例：哈哈哈$sep[表情:大笑]$sep太好玩了');
+      b.writeln('  不要把 [表情:x] 写在句子中间，也不要用清单外的标签。');
     } else {
       b.writeln('- 想表达情绪可以用 emoji（😄🥺 等）。');
     }

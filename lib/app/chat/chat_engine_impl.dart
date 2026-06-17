@@ -94,8 +94,9 @@ class ChatEngineImpl implements ChatEngine {
         await _insert(personaId,
             sender: 'persona', content: m.stickerPath ?? '', type: 'sticker');
       } else {
+        // 落库用 rawContent（保留 [记住:] 供 MEM-02），展示用 m.content。
         await _insert(personaId,
-            sender: 'persona', content: m.content ?? '', type: 'text');
+            sender: 'persona', content: m.rawContent ?? m.content ?? '', type: 'text');
       }
       yield m;
     }

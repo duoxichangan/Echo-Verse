@@ -75,6 +75,21 @@ class DriftPersonaRepo implements PersonaRepo {
         ));
   }
 
+  @override
+  Future<void> delete(int id) async {
+    await db.transaction(() async {
+      // 先删子表（有外键引用 personas），最后删 personas 本身。
+      await (db.delete(db.moments)..where((t) => t.personaId.equals(id))).go();
+      await (db.delete(db.openLoops)..where((t) => t.personaId.equals(id))).go();
+      await (db.delete(db.facts)..where((t) => t.personaId.equals(id))).go();
+      await (db.delete(db.relationshipStates)..where((t) => t.personaId.equals(id))).go();
+      await (db.delete(db.sessionSummaries)..where((t) => t.personaId.equals(id))).go();
+      await (db.delete(db.stickers)..where((t) => t.personaId.equals(id))).go();
+      await (db.delete(db.messages)..where((t) => t.personaId.equals(id))).go();
+      await (db.delete(db.personas)..where((t) => t.id.equals(id))).go();
+    });
+  }
+
   domain.Persona _toDomain(Persona row) => domain.Persona(
         id: row.id,
         name: row.name,

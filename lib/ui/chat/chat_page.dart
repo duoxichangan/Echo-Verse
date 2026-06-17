@@ -66,12 +66,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     _jumpToBottom();
   }
 
+  /// 加载历史时剥掉 [记住:xxx] 内部标记（落库保留了它供 MEM-02，但不展示给用户）。
+  static final _rememberExp = RegExp(r'\[记住[:：][^\]]*\]');
+
   ChatBubbleData _toBubble(Message r) {
     final isSelf = r.sender == 'user';
     if (r.type == 'sticker') {
       return ChatBubbleData.sticker(r.content, isSelf: isSelf);
     }
-    return ChatBubbleData.text(r.content, isSelf: isSelf);
+    final shown = r.content.replaceAll(_rememberExp, '').trim();
+    return ChatBubbleData.text(shown, isSelf: isSelf);
   }
 
   Future<void> _send() async {

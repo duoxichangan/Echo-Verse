@@ -44,6 +44,12 @@ class OutputPostProcessorImpl implements OutputPostProcessor {
   /// 匹配整条恰为 `[表情:label]`（允许前后空白）。
   static final _stickerExp = RegExp(r'^\s*\[表情[:：]\s*(.+?)\s*\]\s*$');
 
+  /// 匹配句中任意位置的 `[表情:label]`（用于把表情从文本里拆出来单独成条）。
+  static final _stickerInline = RegExp(r'\[表情[:：]\s*([^\]]+?)\s*\]');
+
+  /// 匹配 `[记住:xxx]` 内联标记（展示时剥掉，不显示给用户看）。
+  static final _rememberExp = RegExp(r'\[记住[:：][^\]]*\]');
+
   @override
   Future<List<RenderedMessage>> process(
     Stream<String> rawStream, {
@@ -56,18 +62,30 @@ class OutputPostProcessorImpl implements OutputPostProcessor {
     }
     final raw = buf.toString();
 
-    // 2) 切条：按 sep 分割并去空白；全空则兜底为整段一条（R5）。
-    final parts = raw
+    // 2) 切条：优先按私有分隔符；模型没用分隔符时，按换行兜底分条（鲁棒）。
+    var parts = raw
         .split(sep)
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
         .toList();
+    if (parts.length <= 1) {
+      // 没出现 sep（或只有一条）：尝试按换行分条，更贴近真人连发。
+      final byLine = raw
+          .replaceAll(sep, '\n')
+          .split(RegExp(r'\n+'))
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      if (byLine.length > 1) parts = byLine;
+    }
     if (parts.isEmpty) {
-      // 去掉所有分隔符后仍有内容才兜底成一条，否则视为空输出。
       final whole = raw.replaceAll(sep, '').trim();
       if (whole.isEmpty) return const [];
-      parts.add(whole);
+      parts = [whole];
     }
+
+    // 2.5) 句中表情拆分：把含 [表情:x] 的条拆成 文本 / 表情 / 文本 多条。
+    parts = _splitInlineStickers(parts);
 
     // 3) 逐条转 RenderedMessage（解析表情 + 估算延迟）。
     final out = <RenderedMessage>[];
@@ -89,9 +107,36 @@ class OutputPostProcessorImpl implements OutputPostProcessor {
         // 未命中：落到下方按文本处理（保留 [表情:xxx] 原文）。
       }
 
-      final delay = _capDelay(_delayFor(part, isFirst: i == 0), accumulated);
+      // 文本：剥掉 [记住:xxx] 内部标记（不展示给用户），剥后为空则跳过。
+      // rawContent 保留原始（含标记）供落库→MEM-02 提炼。
+      final shown = part.replaceAll(_rememberExp, '').trim();
+      if (shown.isEmpty) continue;
+      final delay = _capDelay(_delayFor(shown, isFirst: i == 0), accumulated);
       accumulated += delay;
-      out.add(RenderedMessage.text(part, delayMs: delay));
+      out.add(RenderedMessage.text(shown, delayMs: delay, rawContent: part));
+    }
+    return out;
+  }
+
+  /// 把每条里嵌在句中的 `[表情:x]` 拆出来：前文本、表情、后文本各成独立条。
+  /// 例："好呀[表情:开心]那走吧" → ["好呀", "[表情:开心]", "那走吧"]。
+  List<String> _splitInlineStickers(List<String> parts) {
+    final out = <String>[];
+    for (final part in parts) {
+      // 整条本就是表情，或不含表情：原样保留。
+      if (_stickerExp.hasMatch(part) || !_stickerInline.hasMatch(part)) {
+        out.add(part);
+        continue;
+      }
+      var last = 0;
+      for (final m in _stickerInline.allMatches(part)) {
+        final before = part.substring(last, m.start).trim();
+        if (before.isNotEmpty) out.add(before);
+        out.add('[表情:${m.group(1)!.trim()}]'); // 规范成整条表情格式
+        last = m.end;
+      }
+      final after = part.substring(last).trim();
+      if (after.isNotEmpty) out.add(after);
     }
     return out;
   }
