@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/error_handling.dart';
-import 'ui/settings/settings_page.dart';
+import 'ui/home/home_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +22,7 @@ class VirtualApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF07C160)),
         useMaterial3: true,
       ),
-      home: const SettingsPage(),
+      home: const HomePage(),
     );
   }
 }

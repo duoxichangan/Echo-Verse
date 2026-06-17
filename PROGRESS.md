@@ -9,10 +9,12 @@
 ## 当前状态
 
 **已完成：批次 A / M0「工程地基可运行」** — 提交 `65dda0d`
-**进行中：批次 B / MVP 核心** — 「发一句→分条回复」对话闭环已跑通（CHAT-01/02/03 + 记忆/画像接入）
+**进行中：批次 B / MVP 核心** — 对话闭环 + UI-01 微信聊天页（1:1 复刻）
 
 - `flutter analyze`：无问题
-- `flutter test`：全 31 项通过（M0 基础 4 + CHAT-03 10 + 记忆线 12 + 对话闭环 5）
+- `flutter test`：全 34 项通过（对话/记忆逻辑 + 气泡 widget）
+- ⚠️ `flutter build apk` 当前因**网络超时**（拉不到 Google maven 的 AGP 8.11.1 / SDK Platform 35）失败，
+  与代码无关；网络恢复后应可构建（M0 时曾通过）
 
 ---
 
@@ -84,6 +86,20 @@
 - [x] DI 注册 `personaRepoProvider` / `contextAssemblerProvider` / `chatEngineProvider`
 - [x] 5 项闭环单测（分条流 / 表情渲染 / 双方落库 / 多轮历史串联 / 不阻塞），全程 MockAdapter 离线
 
+### UI-01 聊天页（1:1 复刻微信，说明书 §15）
+- [x] `lib/ui/chat/wechat_theme.dart`：微信配色/尺寸常量（背景 #EDEDED、自己气泡 #95EC69、
+      输入栏 #F7F7F7、主绿 #07C160 等）
+- [x] `lib/ui/chat/chat_bubble.dart`：左白右绿气泡 + CustomPaint 侧边尖角 + 方角头像，
+      文本/表情两类，表情坏路径兜底占位
+- [x] `lib/ui/chat/chat_page.dart`：微信顶栏（返回 + 居中标题 + 标题下「对方正在输入…」+「…」进设置）、
+      消息列表（历史加载 + 流式追加 + 自动滚底）、底部输入栏（语音/输入框/表情/有字变绿「发送」）。
+      接 `chatEngineProvider`，发送→流式收 RenderedMessage→逐条蹦气泡
+- [x] `lib/ui/home/home_page.dart`：微信式会话列表；空态给「创建示例数字人『小桃』」入口
+      （建号未做前的开发引导，播种画像 + 2 条事实 + 关系状态，让记忆感立即可体验）
+- [x] `main.dart` 入口改为 `HomePage`
+- [x] 3 项气泡 widget 单测（HomePage/ChatPage 的真异步 drift 查询不适合 fake-async widget 测试，
+      留真机/集成验证；对话逻辑已由 chat_engine_test 覆盖）
+
 ---
 
 ## 待办（批次 B / MVP 核心 · M1–M3，尚未开工）
@@ -93,11 +109,12 @@
 - **对话线**：~~`CHAT-03`~~ ✅ ~~`CHAT-01` 上下文组装~~ ✅ ~~`CHAT-02` 对话生成~~ ✅ → 接真 key 端到端验证
 - **人格线**：`PERSONA-01` 微信 txt 解析 → `PERSONA-02` 人格提炼 → ~~`PERSONA-03` 画像存储~~ ✅（编辑器 UI 待 M4）
 - **记忆线**：~~`MEM-01` 读取 / `MEM-03` 衰减检索~~ ✅ → `MEM-02` 写入提炼（依赖 ModelAdapter + OpenLoopEngine）
-- **界面线**：`UI-01` 聊天页 / `UI-02` 建号向导（可用 mock 数据先做视觉）
+- **界面线**：~~`UI-01` 聊天页~~ ✅（含会话列表雏形）→ `UI-02` 建号向导（替换示例 persona 入口）
 
-**当前断点**：对话引擎已能跑出分条回复，但**没有界面**也**还不会自动写记忆**。
-下一步二选一：① `UI-01` 聊天页（接 `chatEngineProvider`，能真正"打字-发送-看回复"）；
-② `MEM-02` 记忆写入（让数字人聊着聊着自动记住事，闭合"记忆像真人"）。
+**当前断点**：能在微信式界面里打字、收到分条回复、看历史；但**还不会自动写记忆**（每轮聊完不沉淀事实），
+且**示例 persona 是开发占位**（真正建号 PERSONA-01/02 未做）。
+下一步二选一：① `MEM-02` 记忆写入（聊着聊着自动记住事，闭合「记忆像真人」）；
+② `PERSONA-01/02` 建号（导入真实聊天记录提炼人格，替换示例「小桃」）。
 
 **推荐起步点**：`CHAT-03`（纯函数、不依赖 LLM、单测友好）+ `PERSONA-01`（靠 MockAdapter 可离线验证）。
 
@@ -113,6 +130,11 @@
 
 2. **flutter_local_notifications 需要 core library desugaring**
    已在 `android/app/build.gradle.kts` 启用 `isCoreLibraryDesugaringEnabled` + `desugar_jdk_libs`。
+
+3. **`flutter build apk` 依赖网络拉 Google maven / Android SDK**
+   现象（2026-06-17）：`Connection timed out` —— 拉不到 AGP `8.11.1` 与 SDK Platform 35。
+   性质：纯网络问题，与 Dart/UI 代码无关（`flutter analyze` 与 `flutter test` 均通过）。
+   解法：网络通畅 / 配好代理后重试；首次成功后 Gradle 与 SDK 会本地缓存。
 
 ---
 
