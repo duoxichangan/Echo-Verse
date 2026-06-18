@@ -42,18 +42,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   bool _typing = false; // 对方正在输入
   bool _sending = false; // 防重复发送
   String? _selfAvatarPath; // 用户头像（全局，从 settings 读）
+  double _lastKeyboardHeight = 0;
 
   @override
   void initState() {
     super.initState();
     _inputCtrl.addListener(() => setState(() {})); // 输入变化切换发送按钮
-    // 输入框获焦（弹键盘）→ 滚到最新消息
-    _inputFocus.addListener(() {
-      if (_inputFocus.hasFocus) _scrollToBottom();
-    });
     _loadHistory();
-    // 进聊天页 → 该数字人未读清零（微信逻辑）。
-    ref.read(unreadNotifierProvider.notifier).markAsRead(widget.personaId);
     // 把刚提炼出的 pending 开放回路纳入调度（预约通知）。失败不影响聊天。
     ref.read(openLoopEngineProvider).processPending(widget.personaId).ignore();
   }
@@ -65,6 +60,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           ..where((m) => m.personaId.equals(widget.personaId))
           ..orderBy([(m) => OrderingTerm.asc(m.createdAt)]))
         .get();
+    if (!mounted) return;
     setState(() {
       _selfAvatarPath = settings.userAvatarPath;
       _bubbles.clear();
@@ -73,7 +69,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       }
       _loading = false;
     });
-    _jumpToBottom();
+    // 反向列表初始即停在底部（最新消息），无需手动跳。
+    // 消息已显示在屏幕上 → 标已读。await 确保 SQL 写完再返回，与首页 refresh 不竞态。
+    await ref.read(unreadNotifierProvider.notifier).markAsRead(widget.personaId);
   }
 
   /// 加载历史时剥掉 [记住:xxx] 内部标记（落库保留了它供 MEM-02，但不展示给用户）。
@@ -128,41 +126,39 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           _typing = false;
           _sending = false;
         });
+        // AI 回复已显示在屏幕上 → 标已读。
+        await ref.read(unreadNotifierProvider.notifier).markAsRead(widget.personaId);
       }
     }
   }
 
+  /// 滚到底部（带动画），给流式回复 / 键盘弹起用。
+  /// 反向列表里「底部」= 偏移 0。
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollCtrl.hasClients) return;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!_scrollCtrl.hasClients) return;
-        if (_scrollCtrl.position.maxScrollExtent > 0) {
-          _scrollCtrl.animateTo(
-            _scrollCtrl.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-          );
-        }
-      });
-    });
-  }
-
-  void _jumpToBottom() {
-    // 双重 postFrame：第一次等 build 完成，第二次等 layout 完成算出真实 maxScrollExtent。
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollCtrl.hasClients) return;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!_scrollCtrl.hasClients) return;
-        if (_scrollCtrl.position.maxScrollExtent > 0) {
-          _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
-        }
-      });
+      if (_scrollCtrl.offset > 0) {
+        _scrollCtrl.animateTo(
+          0,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    // 键盘弹起 → 等动画结束后滚到底部。
+    final keyboardH = MediaQuery.of(context).viewInsets.bottom;
+    if (keyboardH > 0 && _lastKeyboardHeight == 0) {
+      // 键盘刚从关闭变打开：等 400ms 让动画跑完再滚。
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) _scrollToBottom();
+      });
+    }
+    _lastKeyboardHeight = keyboardH;
+
     return Scaffold(
       backgroundColor: WeChat.bg,
       appBar: _appBar(),
@@ -173,11 +169,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
                     controller: _scrollCtrl,
+                    reverse: true, // 反向列表：底部锚定，进页天然停在最新消息。
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: _bubbles.length,
                     itemBuilder: (_, i) {
-                      final b = _bubbles[i];
-                      final prevTs = i == 0 ? 0 : _bubbles[i - 1].createdAt;
+                      // 反向索引：i=0 在最底部 → 对应最新一条。
+                      final idx = _bubbles.length - 1 - i;
+                      final b = _bubbles[idx];
+                      final prevTs = idx == 0 ? 0 : _bubbles[idx - 1].createdAt;
                       final showTime = b.createdAt > 0 &&
                           shouldShowTime(prevTs, b.createdAt);
                       final bubble = ChatBubble(
@@ -187,6 +186,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       );
                       if (!showTime) return bubble;
                       return Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           ChatTimeDivider(timestampMs: b.createdAt),
                           bubble,
@@ -359,8 +359,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   @override
   void dispose() {
-    // 退出聊天页时再次清零——把聊天过程中 AI 新回复的消息也标已读。
-    ref.read(unreadNotifierProvider.notifier).markAsRead(widget.personaId);
     _inputCtrl.dispose();
     _inputFocus.dispose();
     _scrollCtrl.dispose();

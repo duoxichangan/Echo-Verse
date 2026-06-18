@@ -138,12 +138,17 @@ class ChatEngineImpl implements ChatEngine {
     required String content,
     required String type,
   }) async {
+    final ts = nowMs();
     await db.into(db.messages).insert(MessagesCompanion.insert(
           personaId: personaId,
           sender: sender,
           content: content,
           type: Value(type),
-          createdAt: nowMs(),
+          createdAt: ts,
+          // 交互式回复在聊天页打开、消息正显示在屏幕上时生成 → 生而即读。
+          // 这样即便用户在「对方正在输入」期间退出，流的后续分条落库也不会
+          // 残留成未读（红点）。主动消息走另一条路径（Bootstrap），保持未读。
+          readAt: Value(sender == 'persona' ? ts : null),
         ));
   }
 

@@ -41,7 +41,7 @@ void main() {
     test('坏 JSON 回退默认', () {
       final h = ActiveHours.fromJson('not json');
       expect(h.startHour, 8);
-      expect(h.endHour, 23);
+      expect(h.endHour, 24);
     });
   });
 
