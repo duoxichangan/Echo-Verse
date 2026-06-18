@@ -89,11 +89,11 @@ class VirtualApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '虚拟数字人',
+      title: 'Echo Verse',
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF07C160)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromARGB(255, 255, 255, 255)),
         useMaterial3: true,
       ),
       home: const MainShell(),
