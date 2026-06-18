@@ -35,6 +35,7 @@ class ChatPage extends ConsumerStatefulWidget {
 class _ChatPageState extends ConsumerState<ChatPage> {
   final _inputCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
+  final _inputFocus = FocusNode();
   final _bubbles = <ChatBubbleData>[];
 
   bool _loading = true;
@@ -46,6 +47,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   void initState() {
     super.initState();
     _inputCtrl.addListener(() => setState(() {})); // 输入变化切换发送按钮
+    // 输入框获焦（弹键盘）→ 滚到最新消息
+    _inputFocus.addListener(() {
+      if (_inputFocus.hasFocus) _scrollToBottom();
+    });
     _loadHistory();
     // 进聊天页 → 该数字人未读清零（微信逻辑）。
     ref.read(unreadNotifierProvider.notifier).markAsRead(widget.personaId);
@@ -130,18 +135,29 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollCtrl.hasClients) return;
-      _scrollCtrl.animateTo(
-        _scrollCtrl.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_scrollCtrl.hasClients) return;
+        if (_scrollCtrl.position.maxScrollExtent > 0) {
+          _scrollCtrl.animateTo(
+            _scrollCtrl.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          );
+        }
+      });
     });
   }
 
   void _jumpToBottom() {
+    // 双重 postFrame：第一次等 build 完成，第二次等 layout 完成算出真实 maxScrollExtent。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollCtrl.hasClients) return;
-      _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_scrollCtrl.hasClients) return;
+        if (_scrollCtrl.position.maxScrollExtent > 0) {
+          _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
+        }
+      });
     });
   }
 
@@ -284,6 +300,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               alignment: Alignment.centerLeft,
               child: TextField(
                 controller: _inputCtrl,
+                focusNode: _inputFocus,
                 minLines: 1,
                 maxLines: 4,
                 textInputAction: TextInputAction.send,
@@ -342,7 +359,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   @override
   void dispose() {
+    // 退出聊天页时再次清零——把聊天过程中 AI 新回复的消息也标已读。
+    ref.read(unreadNotifierProvider.notifier).markAsRead(widget.personaId);
     _inputCtrl.dispose();
+    _inputFocus.dispose();
     _scrollCtrl.dispose();
     super.dispose();
   }
