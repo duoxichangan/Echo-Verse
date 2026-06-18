@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.jpg" alt="EchoVerse Logo" width="200">
+</p>
+
 # EchoVerse（虚拟数字人）
 
 > 把那些熟悉的动静、习惯的语气，捻成线，缝进聊天框的缝隙里。
