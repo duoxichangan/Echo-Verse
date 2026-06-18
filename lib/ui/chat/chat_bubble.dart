@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../common/wechat_emoji.dart';
 import 'wechat_theme.dart';
 
 /// 聊天页用的 UI 消息模型（与落库的 message 行解耦，只装渲染需要的）。
@@ -112,7 +113,7 @@ class ChatBubble extends StatelessWidget {
           borderRadius: BorderRadius.circular(WeChat.bubbleRadius),
         ),
         child: Text(
-          data.text ?? '',
+          convertWeChatEmoji(data.text ?? ''),
           style: const TextStyle(
             fontSize: WeChat.msgFontSize,
             color: WeChat.textPrimary,

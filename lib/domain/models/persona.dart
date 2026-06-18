@@ -20,6 +20,9 @@ class Persona {
   /// 关系（女友/好友/家人…）。
   final String? relationship;
 
+  /// 主动找用户的频率档位（0=关闭，见 ProactiveTier）。
+  final int proactiveTier;
+
   const Persona({
     required this.id,
     required this.name,
@@ -29,5 +32,6 @@ class Persona {
     this.outwardPersonaJson,
     this.userAlias,
     this.relationship,
+    this.proactiveTier = 0,
   });
 }

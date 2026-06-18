@@ -6,6 +6,7 @@ import '../../data/db/database.dart';
 import '../../domain/contracts/open_loop_engine.dart';
 import '../../domain/contracts/social_service.dart';
 import '../../domain/models/open_loop.dart' as domain;
+import 'proactive_message_engine.dart';
 
 /// 启动补发对账（手册 PROACT-03 / 说明书 §4.6）。
 ///
@@ -21,6 +22,9 @@ class ProactiveBootstrap {
   final OpenLoopEngine engine;
   final SocialService? social;
 
+  /// 主动消息引擎（预生成+排期）；null 则不处理主动消息。
+  final ProactiveMessageEngine? messageEngine;
+
   /// 朋友圈自发活跃度 0–100（来自 settings.momentFrequency）。
   final int momentFrequency;
 
@@ -34,6 +38,7 @@ class ProactiveBootstrap {
     required this.db,
     required this.engine,
     this.social,
+    this.messageEngine,
     this.momentFrequency = 30,
     this.momentMinGapHours = 6,
     int Function()? nowMs,
@@ -45,8 +50,45 @@ class ProactiveBootstrap {
     final personas = await db.select(db.personas).get();
     for (final p in personas) {
       await engine.processPending(p.id); // 预约未来的 pending 钟点回路
-      await _catchUp(p.id); // 补发到点未处理的
+      await _catchUp(p.id); // 补发到点未处理的开放回路
+      await _deliverDueProactives(p.id); // 投递到点的预生成主动消息
       await _maybePostMoment(p.id); // 按概率自发朋友圈
+      // 给开启主动的人排下一条（已有未到点排期则内部跳过）。
+      await messageEngine?.scheduleNext(p.id);
+    }
+  }
+
+  /// 投递到点的预生成主动消息：scheduledAt<=now & status=scheduled 的，
+  /// 转成正式 messages(isProactive=true) 落库并标 delivered。
+  Future<void> _deliverDueProactives(int personaId) async {
+    final now = nowMs();
+    final due = await (db.select(db.scheduledProactives)
+          ..where((s) =>
+              s.personaId.equals(personaId) &
+              s.status.equals('scheduled') &
+              s.scheduledAt.isSmallerOrEqualValue(now)))
+        .get();
+    for (final r in due) {
+      // 预生成内容可能含 ‹SEP› 分条；这里按条落库，连发即多行。
+      final parts = r.content
+          .split('‹SEP›')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      final lines = parts.isEmpty ? [r.content.trim()] : parts;
+      for (final line in lines) {
+        if (line.isEmpty) continue;
+        await db.into(db.messages).insert(MessagesCompanion.insert(
+              personaId: personaId,
+              sender: 'persona',
+              content: line,
+              type: const Value('text'),
+              isProactive: const Value(true),
+              createdAt: now,
+            ));
+      }
+      await (db.update(db.scheduledProactives)..where((s) => s.id.equals(r.id)))
+          .write(const ScheduledProactivesCompanion(status: Value('delivered')));
     }
   }
 

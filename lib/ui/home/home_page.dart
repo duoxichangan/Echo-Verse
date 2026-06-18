@@ -1,4 +1,6 @@
 import 'package:drift/drift.dart' show Value;
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -104,7 +106,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           bottom: BorderSide(color: WeChat.divider, width: 0.5),
         ),
         title: const Text(
-          '微信',
+          'Echo Verse',
           style: TextStyle(fontWeight: FontWeight.w600, color: WeChat.textPrimary),
         ),
         centerTitle: true,
@@ -184,12 +186,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(5),
-            child: Container(
-              width: 48,
-              height: 48,
-              color: const Color(0xFFBFBFBF),
-              child: const Icon(Icons.face, color: Colors.white, size: 30),
-            ),
+            child: _avatar(p.avatarPath),
           ),
           title: Text(
             p.name,
@@ -212,6 +209,20 @@ class _HomePageState extends ConsumerState<HomePage> {
           onLongPress: () => _confirmDelete(p),
         );
       },
+    );
+  }
+
+  Widget _avatar(String? path) {
+    final ok = path != null && path.isNotEmpty && File(path).existsSync();
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: ok
+          ? Image.file(File(path), fit: BoxFit.cover)
+          : Container(
+              color: const Color(0xFFBFBFBF),
+              child: const Icon(Icons.face, color: Colors.white, size: 30),
+            ),
     );
   }
 

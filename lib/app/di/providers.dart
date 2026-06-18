@@ -34,6 +34,7 @@ import '../proact/active_hours.dart';
 import '../proact/default_open_loop_engine.dart';
 import '../proact/default_scheduler.dart';
 import '../proact/local_notification_port.dart';
+import '../proact/proactive_message_engine.dart';
 import '../social/default_social_service.dart';
 
 /// 全局依赖注入总线（手册 INFRA-01）。
@@ -169,6 +170,23 @@ final openLoopEngineProvider = Provider<OpenLoopEngine>(
     notifications: ref.watch(notificationPortProvider),
   ),
 );
+
+/// 主动消息引擎（预生成 + 定时通知）。依赖 modelAdapter，故为异步 provider。
+/// 无 key 时退化到 MockAdapter（仍能排期，便于离线验证）。
+final proactiveMessageEngineProvider =
+    FutureProvider<ProactiveMessageEngine>((ref) async {
+  final adapter = await ref.watch(modelAdapterProvider.future);
+  final settings = ref.watch(settingsProvider).valueOrNull;
+  return ProactiveMessageEngine(
+    db: ref.watch(databaseProvider),
+    adapter: adapter,
+    personaRepo: ref.watch(personaRepoProvider),
+    memoryService: ref.watch(memoryServiceProvider),
+    scheduler: ref.watch(schedulerProvider),
+    notifications: ref.watch(notificationPortProvider),
+    activeHours: ActiveHours.fromJson(settings?.activeHoursJson ?? '{}'),
+  );
+});
 
 // ── 批次 E 社交 ───────────────────────────────────────────
 

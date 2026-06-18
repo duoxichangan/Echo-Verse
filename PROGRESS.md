@@ -2,7 +2,7 @@
 
 > 本文件记录开发进度与续作指引，随里程碑更新。
 > 配套文档（仓库根目录）：`项目说明书.md`（权威行为定义）、`开发手册.md`（工单拆分/接口契约）、`方案_v0.1.md`（决策来由）。
-> 最后更新：2026-06-17
+> 最后更新：2026-06-18
 
 ---
 
@@ -19,13 +19,41 @@
 > （`时间 '说话人'` 头）本地正则全量切分（实测 17220 行→5735 条全部识别），超长记录提炼走
 > map-reduce 分批读完全部。此前「全交 LLM 逐条重输出」会因输出截断只识别出 1 条。
 
+> 修复（本轮，2026-06-18）：三项体验问题 ——
+> ① **微信内置表情显示**：数字人从聊天记录学到 `[捂脸]` `[爱心]` `[旺柴]` 这类微信自带表情名，
+>    原来当普通文字显示成穿帮原文。新增 `lib/ui/common/wechat_emoji.dart`（名→emoji 映射 +
+>    `convertWeChatEmoji`），在聊天气泡 / 朋友圈**展示时**还原成 emoji；未知占位符原样保留、
+>    落库仍存原文供记忆提炼。表情包（`[表情:label]`）查库逻辑不变，两者不冲突。
+> ② **主界面头像**：`home_page.dart` 会话列表原来硬编码 `Icons.face`，没读 `persona.avatarPath`；
+>    改为有图显示头像、无图回退占位（与聊天页一致）。
+> ③ **记忆状态更新 + 时间感知**：提炼 prompt 增「识别状态变化并覆盖旧事实」规则——
+>    “在准备/在学/在等”的事一旦说**做完/结束/放弃**就 superseded 旧事实并写新状态，
+>    不再把已完成的事当“正在进行”留着，也不再为其登记 open_loop；对话 prompt 强化时间感——
+>    对方说的话与当前时间对不上（如下午发“早安”）会自然点出、调侃，而非平淡回应。
+>    新增 `wechat_emoji_test`（5 项）。
+
+> 新功能（本轮，2026-06-18）：**数字人主动找你**（预生成 + 定时通知）——
+> ① 每个数字人在资料页可设「主动找我」档位（关闭/偶尔约每天1次/正常每天2-3次/频繁每天4-5次，
+>    `ProactiveTier`，落库 `personas.proactiveTier`）。
+> ② **预生成模式**（应对国产 ROM 杀后台）：App 启动/回前台时，`ProactiveMessageEngine.scheduleNext`
+>    按档位算下一触发时刻（落活跃时段 + ±40% 抖动 + 受调度配额约束），**提前用 LLM 生成**一条
+>    符合人设/记忆/时段的主动开场白（`proactive_prompts.dart`），写入新表 `scheduled_proactives`，
+>    并排一条本地通知（AlarmManager，App 被杀也能到点弹）。
+> ③ `ProactiveBootstrap` 扩展 `_deliverDueProactives`：到点（或下次启动对账）把排期投递成正式
+>    `messages`(isProactive=true，按 ‹SEP› 分条多行)，标 delivered，再排下一条。
+> ④ 通知点开 → main 注入 onTap 路由：先对账投递、再打开对应 ChatPage（用全局 navigatorKey）。
+> ⑤ schema v2→v3：`personas.proactiveTier` 列 + `scheduled_proactives` 表（迁移）。
+>    AndroidManifest 加通知/精确闹钟/开机权限 + flutter_local_notifications 的两个 receiver。
+> ⑥ 新增测试 11 项（`proactive_tier` / `proactive_message_engine` / `proactive_bootstrap`）。
+> 范围外：WorkManager 真后台实时生成、iOS 通知、通知内快捷回复。
+
 > 增强（schema v2）：① 底部 Tab（微信/发现/我）+ 朋友圈聚合页 + 启动按「朋友圈活跃度」概率
 > 自发朋友圈（设置页滑块可调，受调度作息/配额约束）；② 用户全局头像/昵称 +「我」页、数字人
 > 头像/备注资料页（聊天页标题进入）；③ prompt 注入当前时间（深夜会困/饭点问吃饭）+ 气泡按
 > 微信规则显示时间分隔。settings 表加 userName/userAvatarPath/momentFrequency 三列（迁移 v1→v2）。
 
 - `flutter analyze`：无问题
-- `flutter test`：全 100 项通过
+- `flutter test`：全 120 项通过
 - `flutter build apk --debug`：✅ 通过
 
 ---

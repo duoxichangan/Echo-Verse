@@ -58,6 +58,14 @@ class $PersonasTable extends Personas with TableInfo<$PersonasTable, Persona> {
   late final GeneratedColumn<String> relationship = GeneratedColumn<String>(
       'relationship', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _proactiveTierMeta =
+      const VerificationMeta('proactiveTier');
+  @override
+  late final GeneratedColumn<int> proactiveTier = GeneratedColumn<int>(
+      'proactive_tier', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -80,6 +88,7 @@ class $PersonasTable extends Personas with TableInfo<$PersonasTable, Persona> {
         outwardPersonaJson,
         userAlias,
         relationship,
+        proactiveTier,
         createdAt,
         updatedAt
       ];
@@ -140,6 +149,12 @@ class $PersonasTable extends Personas with TableInfo<$PersonasTable, Persona> {
           relationship.isAcceptableOrUnknown(
               data['relationship']!, _relationshipMeta));
     }
+    if (data.containsKey('proactive_tier')) {
+      context.handle(
+          _proactiveTierMeta,
+          proactiveTier.isAcceptableOrUnknown(
+              data['proactive_tier']!, _proactiveTierMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -177,6 +192,8 @@ class $PersonasTable extends Personas with TableInfo<$PersonasTable, Persona> {
           .read(DriftSqlType.string, data['${effectivePrefix}user_alias']),
       relationship: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}relationship']),
+      proactiveTier: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}proactive_tier'])!,
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -199,6 +216,9 @@ class Persona extends DataClass implements Insertable<Persona> {
   final String? outwardPersonaJson;
   final String? userAlias;
   final String? relationship;
+
+  /// 主动找用户的频率档位（0=关闭，见 ProactiveTier）。
+  final int proactiveTier;
   final int createdAt;
   final int updatedAt;
   const Persona(
@@ -210,6 +230,7 @@ class Persona extends DataClass implements Insertable<Persona> {
       this.outwardPersonaJson,
       this.userAlias,
       this.relationship,
+      required this.proactiveTier,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -231,6 +252,7 @@ class Persona extends DataClass implements Insertable<Persona> {
     if (!nullToAbsent || relationship != null) {
       map['relationship'] = Variable<String>(relationship);
     }
+    map['proactive_tier'] = Variable<int>(proactiveTier);
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
     return map;
@@ -254,6 +276,7 @@ class Persona extends DataClass implements Insertable<Persona> {
       relationship: relationship == null && nullToAbsent
           ? const Value.absent()
           : Value(relationship),
+      proactiveTier: Value(proactiveTier),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -273,6 +296,7 @@ class Persona extends DataClass implements Insertable<Persona> {
           serializer.fromJson<String?>(json['outwardPersonaJson']),
       userAlias: serializer.fromJson<String?>(json['userAlias']),
       relationship: serializer.fromJson<String?>(json['relationship']),
+      proactiveTier: serializer.fromJson<int>(json['proactiveTier']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -289,6 +313,7 @@ class Persona extends DataClass implements Insertable<Persona> {
       'outwardPersonaJson': serializer.toJson<String?>(outwardPersonaJson),
       'userAlias': serializer.toJson<String?>(userAlias),
       'relationship': serializer.toJson<String?>(relationship),
+      'proactiveTier': serializer.toJson<int>(proactiveTier),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -303,6 +328,7 @@ class Persona extends DataClass implements Insertable<Persona> {
           Value<String?> outwardPersonaJson = const Value.absent(),
           Value<String?> userAlias = const Value.absent(),
           Value<String?> relationship = const Value.absent(),
+          int? proactiveTier,
           int? createdAt,
           int? updatedAt}) =>
       Persona(
@@ -317,6 +343,7 @@ class Persona extends DataClass implements Insertable<Persona> {
         userAlias: userAlias.present ? userAlias.value : this.userAlias,
         relationship:
             relationship.present ? relationship.value : this.relationship,
+        proactiveTier: proactiveTier ?? this.proactiveTier,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -338,6 +365,9 @@ class Persona extends DataClass implements Insertable<Persona> {
       relationship: data.relationship.present
           ? data.relationship.value
           : this.relationship,
+      proactiveTier: data.proactiveTier.present
+          ? data.proactiveTier.value
+          : this.proactiveTier,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -354,6 +384,7 @@ class Persona extends DataClass implements Insertable<Persona> {
           ..write('outwardPersonaJson: $outwardPersonaJson, ')
           ..write('userAlias: $userAlias, ')
           ..write('relationship: $relationship, ')
+          ..write('proactiveTier: $proactiveTier, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -370,6 +401,7 @@ class Persona extends DataClass implements Insertable<Persona> {
       outwardPersonaJson,
       userAlias,
       relationship,
+      proactiveTier,
       createdAt,
       updatedAt);
   @override
@@ -384,6 +416,7 @@ class Persona extends DataClass implements Insertable<Persona> {
           other.outwardPersonaJson == this.outwardPersonaJson &&
           other.userAlias == this.userAlias &&
           other.relationship == this.relationship &&
+          other.proactiveTier == this.proactiveTier &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -397,6 +430,7 @@ class PersonasCompanion extends UpdateCompanion<Persona> {
   final Value<String?> outwardPersonaJson;
   final Value<String?> userAlias;
   final Value<String?> relationship;
+  final Value<int> proactiveTier;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   const PersonasCompanion({
@@ -408,6 +442,7 @@ class PersonasCompanion extends UpdateCompanion<Persona> {
     this.outwardPersonaJson = const Value.absent(),
     this.userAlias = const Value.absent(),
     this.relationship = const Value.absent(),
+    this.proactiveTier = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -420,6 +455,7 @@ class PersonasCompanion extends UpdateCompanion<Persona> {
     this.outwardPersonaJson = const Value.absent(),
     this.userAlias = const Value.absent(),
     this.relationship = const Value.absent(),
+    this.proactiveTier = const Value.absent(),
     required int createdAt,
     required int updatedAt,
   })  : name = Value(name),
@@ -436,6 +472,7 @@ class PersonasCompanion extends UpdateCompanion<Persona> {
     Expression<String>? outwardPersonaJson,
     Expression<String>? userAlias,
     Expression<String>? relationship,
+    Expression<int>? proactiveTier,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
   }) {
@@ -450,6 +487,7 @@ class PersonasCompanion extends UpdateCompanion<Persona> {
         'outward_persona_json': outwardPersonaJson,
       if (userAlias != null) 'user_alias': userAlias,
       if (relationship != null) 'relationship': relationship,
+      if (proactiveTier != null) 'proactive_tier': proactiveTier,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -464,6 +502,7 @@ class PersonasCompanion extends UpdateCompanion<Persona> {
       Value<String?>? outwardPersonaJson,
       Value<String?>? userAlias,
       Value<String?>? relationship,
+      Value<int>? proactiveTier,
       Value<int>? createdAt,
       Value<int>? updatedAt}) {
     return PersonasCompanion(
@@ -475,6 +514,7 @@ class PersonasCompanion extends UpdateCompanion<Persona> {
       outwardPersonaJson: outwardPersonaJson ?? this.outwardPersonaJson,
       userAlias: userAlias ?? this.userAlias,
       relationship: relationship ?? this.relationship,
+      proactiveTier: proactiveTier ?? this.proactiveTier,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -507,6 +547,9 @@ class PersonasCompanion extends UpdateCompanion<Persona> {
     if (relationship.present) {
       map['relationship'] = Variable<String>(relationship.value);
     }
+    if (proactiveTier.present) {
+      map['proactive_tier'] = Variable<int>(proactiveTier.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -527,6 +570,7 @@ class PersonasCompanion extends UpdateCompanion<Persona> {
           ..write('outwardPersonaJson: $outwardPersonaJson, ')
           ..write('userAlias: $userAlias, ')
           ..write('relationship: $relationship, ')
+          ..write('proactiveTier: $proactiveTier, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -3686,6 +3730,399 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsTableData> {
   }
 }
 
+class $ScheduledProactivesTable extends ScheduledProactives
+    with TableInfo<$ScheduledProactivesTable, ScheduledProactive> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ScheduledProactivesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _personaIdMeta =
+      const VerificationMeta('personaId');
+  @override
+  late final GeneratedColumn<int> personaId = GeneratedColumn<int>(
+      'persona_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES personas (id)'));
+  static const VerificationMeta _contentMeta =
+      const VerificationMeta('content');
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+      'content', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _scheduledAtMeta =
+      const VerificationMeta('scheduledAt');
+  @override
+  late final GeneratedColumn<int> scheduledAt = GeneratedColumn<int>(
+      'scheduled_at', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _notificationIdMeta =
+      const VerificationMeta('notificationId');
+  @override
+  late final GeneratedColumn<int> notificationId = GeneratedColumn<int>(
+      'notification_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('scheduled'));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, personaId, content, scheduledAt, notificationId, status, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'scheduled_proactives';
+  @override
+  VerificationContext validateIntegrity(Insertable<ScheduledProactive> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('persona_id')) {
+      context.handle(_personaIdMeta,
+          personaId.isAcceptableOrUnknown(data['persona_id']!, _personaIdMeta));
+    } else if (isInserting) {
+      context.missing(_personaIdMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(_contentMeta,
+          content.isAcceptableOrUnknown(data['content']!, _contentMeta));
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('scheduled_at')) {
+      context.handle(
+          _scheduledAtMeta,
+          scheduledAt.isAcceptableOrUnknown(
+              data['scheduled_at']!, _scheduledAtMeta));
+    } else if (isInserting) {
+      context.missing(_scheduledAtMeta);
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+          _notificationIdMeta,
+          notificationId.isAcceptableOrUnknown(
+              data['notification_id']!, _notificationIdMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ScheduledProactive map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ScheduledProactive(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      personaId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}persona_id'])!,
+      content: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
+      scheduledAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}scheduled_at'])!,
+      notificationId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}notification_id']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $ScheduledProactivesTable createAlias(String alias) {
+    return $ScheduledProactivesTable(attachedDatabase, alias);
+  }
+}
+
+class ScheduledProactive extends DataClass
+    implements Insertable<ScheduledProactive> {
+  final int id;
+  final int personaId;
+
+  /// 预生成的主动消息正文（可能含 ‹SEP› 分条标记，投递时按聊天规则处理）。
+  final String content;
+
+  /// 计划触发时间戳（毫秒）。
+  final int scheduledAt;
+
+  /// 关联的本地通知 ID（便于取消）。
+  final int? notificationId;
+
+  /// scheduled / delivered / cancelled。
+  final String status;
+  final int createdAt;
+  const ScheduledProactive(
+      {required this.id,
+      required this.personaId,
+      required this.content,
+      required this.scheduledAt,
+      this.notificationId,
+      required this.status,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['persona_id'] = Variable<int>(personaId);
+    map['content'] = Variable<String>(content);
+    map['scheduled_at'] = Variable<int>(scheduledAt);
+    if (!nullToAbsent || notificationId != null) {
+      map['notification_id'] = Variable<int>(notificationId);
+    }
+    map['status'] = Variable<String>(status);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  ScheduledProactivesCompanion toCompanion(bool nullToAbsent) {
+    return ScheduledProactivesCompanion(
+      id: Value(id),
+      personaId: Value(personaId),
+      content: Value(content),
+      scheduledAt: Value(scheduledAt),
+      notificationId: notificationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notificationId),
+      status: Value(status),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ScheduledProactive.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ScheduledProactive(
+      id: serializer.fromJson<int>(json['id']),
+      personaId: serializer.fromJson<int>(json['personaId']),
+      content: serializer.fromJson<String>(json['content']),
+      scheduledAt: serializer.fromJson<int>(json['scheduledAt']),
+      notificationId: serializer.fromJson<int?>(json['notificationId']),
+      status: serializer.fromJson<String>(json['status']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'personaId': serializer.toJson<int>(personaId),
+      'content': serializer.toJson<String>(content),
+      'scheduledAt': serializer.toJson<int>(scheduledAt),
+      'notificationId': serializer.toJson<int?>(notificationId),
+      'status': serializer.toJson<String>(status),
+      'createdAt': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  ScheduledProactive copyWith(
+          {int? id,
+          int? personaId,
+          String? content,
+          int? scheduledAt,
+          Value<int?> notificationId = const Value.absent(),
+          String? status,
+          int? createdAt}) =>
+      ScheduledProactive(
+        id: id ?? this.id,
+        personaId: personaId ?? this.personaId,
+        content: content ?? this.content,
+        scheduledAt: scheduledAt ?? this.scheduledAt,
+        notificationId:
+            notificationId.present ? notificationId.value : this.notificationId,
+        status: status ?? this.status,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  ScheduledProactive copyWithCompanion(ScheduledProactivesCompanion data) {
+    return ScheduledProactive(
+      id: data.id.present ? data.id.value : this.id,
+      personaId: data.personaId.present ? data.personaId.value : this.personaId,
+      content: data.content.present ? data.content.value : this.content,
+      scheduledAt:
+          data.scheduledAt.present ? data.scheduledAt.value : this.scheduledAt,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      status: data.status.present ? data.status.value : this.status,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduledProactive(')
+          ..write('id: $id, ')
+          ..write('personaId: $personaId, ')
+          ..write('content: $content, ')
+          ..write('scheduledAt: $scheduledAt, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, personaId, content, scheduledAt, notificationId, status, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ScheduledProactive &&
+          other.id == this.id &&
+          other.personaId == this.personaId &&
+          other.content == this.content &&
+          other.scheduledAt == this.scheduledAt &&
+          other.notificationId == this.notificationId &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt);
+}
+
+class ScheduledProactivesCompanion extends UpdateCompanion<ScheduledProactive> {
+  final Value<int> id;
+  final Value<int> personaId;
+  final Value<String> content;
+  final Value<int> scheduledAt;
+  final Value<int?> notificationId;
+  final Value<String> status;
+  final Value<int> createdAt;
+  const ScheduledProactivesCompanion({
+    this.id = const Value.absent(),
+    this.personaId = const Value.absent(),
+    this.content = const Value.absent(),
+    this.scheduledAt = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  ScheduledProactivesCompanion.insert({
+    this.id = const Value.absent(),
+    required int personaId,
+    required String content,
+    required int scheduledAt,
+    this.notificationId = const Value.absent(),
+    this.status = const Value.absent(),
+    required int createdAt,
+  })  : personaId = Value(personaId),
+        content = Value(content),
+        scheduledAt = Value(scheduledAt),
+        createdAt = Value(createdAt);
+  static Insertable<ScheduledProactive> custom({
+    Expression<int>? id,
+    Expression<int>? personaId,
+    Expression<String>? content,
+    Expression<int>? scheduledAt,
+    Expression<int>? notificationId,
+    Expression<String>? status,
+    Expression<int>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (personaId != null) 'persona_id': personaId,
+      if (content != null) 'content': content,
+      if (scheduledAt != null) 'scheduled_at': scheduledAt,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (status != null) 'status': status,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  ScheduledProactivesCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? personaId,
+      Value<String>? content,
+      Value<int>? scheduledAt,
+      Value<int?>? notificationId,
+      Value<String>? status,
+      Value<int>? createdAt}) {
+    return ScheduledProactivesCompanion(
+      id: id ?? this.id,
+      personaId: personaId ?? this.personaId,
+      content: content ?? this.content,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
+      notificationId: notificationId ?? this.notificationId,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (personaId.present) {
+      map['persona_id'] = Variable<int>(personaId.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (scheduledAt.present) {
+      map['scheduled_at'] = Variable<int>(scheduledAt.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<int>(notificationId.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduledProactivesCompanion(')
+          ..write('id: $id, ')
+          ..write('personaId: $personaId, ')
+          ..write('content: $content, ')
+          ..write('scheduledAt: $scheduledAt, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3700,6 +4137,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $StickersTable stickers = $StickersTable(this);
   late final $MomentsTable moments = $MomentsTable(this);
   late final $SettingsTableTable settingsTable = $SettingsTableTable(this);
+  late final $ScheduledProactivesTable scheduledProactives =
+      $ScheduledProactivesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3713,7 +4152,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         openLoops,
         stickers,
         moments,
-        settingsTable
+        settingsTable,
+        scheduledProactives
       ];
 }
 
@@ -3726,6 +4166,7 @@ typedef $$PersonasTableCreateCompanionBuilder = PersonasCompanion Function({
   Value<String?> outwardPersonaJson,
   Value<String?> userAlias,
   Value<String?> relationship,
+  Value<int> proactiveTier,
   required int createdAt,
   required int updatedAt,
 });
@@ -3738,6 +4179,7 @@ typedef $$PersonasTableUpdateCompanionBuilder = PersonasCompanion Function({
   Value<String?> outwardPersonaJson,
   Value<String?> userAlias,
   Value<String?> relationship,
+  Value<int> proactiveTier,
   Value<int> createdAt,
   Value<int> updatedAt,
 });
@@ -3853,6 +4295,24 @@ final class $$PersonasTableReferences
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
+
+  static MultiTypedResultKey<$ScheduledProactivesTable,
+      List<ScheduledProactive>> _scheduledProactivesRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.scheduledProactives,
+          aliasName: $_aliasNameGenerator(
+              db.personas.id, db.scheduledProactives.personaId));
+
+  $$ScheduledProactivesTableProcessedTableManager get scheduledProactivesRefs {
+    final manager =
+        $$ScheduledProactivesTableTableManager($_db, $_db.scheduledProactives)
+            .filter((f) => f.personaId.id($_item.id));
+
+    final cache =
+        $_typedResult.readTableOrNull(_scheduledProactivesRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
 }
 
 class $$PersonasTableFilterComposer
@@ -3889,6 +4349,9 @@ class $$PersonasTableFilterComposer
 
   ColumnFilters<String> get relationship => $composableBuilder(
       column: $table.relationship, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get proactiveTier => $composableBuilder(
+      column: $table.proactiveTier, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -4042,6 +4505,27 @@ class $$PersonasTableFilterComposer
             ));
     return f(composer);
   }
+
+  Expression<bool> scheduledProactivesRefs(
+      Expression<bool> Function($$ScheduledProactivesTableFilterComposer f) f) {
+    final $$ScheduledProactivesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.scheduledProactives,
+        getReferencedColumn: (t) => t.personaId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ScheduledProactivesTableFilterComposer(
+              $db: $db,
+              $table: $db.scheduledProactives,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$PersonasTableOrderingComposer
@@ -4078,6 +4562,10 @@ class $$PersonasTableOrderingComposer
 
   ColumnOrderings<String> get relationship => $composableBuilder(
       column: $table.relationship,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get proactiveTier => $composableBuilder(
+      column: $table.proactiveTier,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<int> get createdAt => $composableBuilder(
@@ -4119,6 +4607,9 @@ class $$PersonasTableAnnotationComposer
 
   GeneratedColumn<String> get relationship => $composableBuilder(
       column: $table.relationship, builder: (column) => column);
+
+  GeneratedColumn<int> get proactiveTier => $composableBuilder(
+      column: $table.proactiveTier, builder: (column) => column);
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4273,6 +4764,29 @@ class $$PersonasTableAnnotationComposer
             ));
     return f(composer);
   }
+
+  Expression<T> scheduledProactivesRefs<T extends Object>(
+      Expression<T> Function($$ScheduledProactivesTableAnnotationComposer a)
+          f) {
+    final $$ScheduledProactivesTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.scheduledProactives,
+            getReferencedColumn: (t) => t.personaId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$ScheduledProactivesTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.scheduledProactives,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
 }
 
 class $$PersonasTableTableManager extends RootTableManager<
@@ -4293,7 +4807,8 @@ class $$PersonasTableTableManager extends RootTableManager<
         bool relationshipStatesRefs,
         bool openLoopsRefs,
         bool stickersRefs,
-        bool momentsRefs})> {
+        bool momentsRefs,
+        bool scheduledProactivesRefs})> {
   $$PersonasTableTableManager(_$AppDatabase db, $PersonasTable table)
       : super(TableManagerState(
           db: db,
@@ -4313,6 +4828,7 @@ class $$PersonasTableTableManager extends RootTableManager<
             Value<String?> outwardPersonaJson = const Value.absent(),
             Value<String?> userAlias = const Value.absent(),
             Value<String?> relationship = const Value.absent(),
+            Value<int> proactiveTier = const Value.absent(),
             Value<int> createdAt = const Value.absent(),
             Value<int> updatedAt = const Value.absent(),
           }) =>
@@ -4325,6 +4841,7 @@ class $$PersonasTableTableManager extends RootTableManager<
             outwardPersonaJson: outwardPersonaJson,
             userAlias: userAlias,
             relationship: relationship,
+            proactiveTier: proactiveTier,
             createdAt: createdAt,
             updatedAt: updatedAt,
           ),
@@ -4337,6 +4854,7 @@ class $$PersonasTableTableManager extends RootTableManager<
             Value<String?> outwardPersonaJson = const Value.absent(),
             Value<String?> userAlias = const Value.absent(),
             Value<String?> relationship = const Value.absent(),
+            Value<int> proactiveTier = const Value.absent(),
             required int createdAt,
             required int updatedAt,
           }) =>
@@ -4349,6 +4867,7 @@ class $$PersonasTableTableManager extends RootTableManager<
             outwardPersonaJson: outwardPersonaJson,
             userAlias: userAlias,
             relationship: relationship,
+            proactiveTier: proactiveTier,
             createdAt: createdAt,
             updatedAt: updatedAt,
           ),
@@ -4363,7 +4882,8 @@ class $$PersonasTableTableManager extends RootTableManager<
               relationshipStatesRefs = false,
               openLoopsRefs = false,
               stickersRefs = false,
-              momentsRefs = false}) {
+              momentsRefs = false,
+              scheduledProactivesRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
@@ -4373,7 +4893,8 @@ class $$PersonasTableTableManager extends RootTableManager<
                 if (relationshipStatesRefs) db.relationshipStates,
                 if (openLoopsRefs) db.openLoops,
                 if (stickersRefs) db.stickers,
-                if (momentsRefs) db.moments
+                if (momentsRefs) db.moments,
+                if (scheduledProactivesRefs) db.scheduledProactives
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
@@ -4460,6 +4981,18 @@ class $$PersonasTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem:
                             (item, referencedItems) => referencedItems
                                 .where((e) => e.personaId == item.id),
+                        typedResults: items),
+                  if (scheduledProactivesRefs)
+                    await $_getPrefetchedData(
+                        currentTable: table,
+                        referencedTable: $$PersonasTableReferences
+                            ._scheduledProactivesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$PersonasTableReferences(db, table, p0)
+                                .scheduledProactivesRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.personaId == item.id),
                         typedResults: items)
                 ];
               },
@@ -4486,7 +5019,8 @@ typedef $$PersonasTableProcessedTableManager = ProcessedTableManager<
         bool relationshipStatesRefs,
         bool openLoopsRefs,
         bool stickersRefs,
-        bool momentsRefs})>;
+        bool momentsRefs,
+        bool scheduledProactivesRefs})>;
 typedef $$MessagesTableCreateCompanionBuilder = MessagesCompanion Function({
   Value<int> id,
   required int personaId,
@@ -6784,6 +7318,311 @@ typedef $$SettingsTableTableProcessedTableManager = ProcessedTableManager<
     ),
     SettingsTableData,
     PrefetchHooks Function()>;
+typedef $$ScheduledProactivesTableCreateCompanionBuilder
+    = ScheduledProactivesCompanion Function({
+  Value<int> id,
+  required int personaId,
+  required String content,
+  required int scheduledAt,
+  Value<int?> notificationId,
+  Value<String> status,
+  required int createdAt,
+});
+typedef $$ScheduledProactivesTableUpdateCompanionBuilder
+    = ScheduledProactivesCompanion Function({
+  Value<int> id,
+  Value<int> personaId,
+  Value<String> content,
+  Value<int> scheduledAt,
+  Value<int?> notificationId,
+  Value<String> status,
+  Value<int> createdAt,
+});
+
+final class $$ScheduledProactivesTableReferences extends BaseReferences<
+    _$AppDatabase, $ScheduledProactivesTable, ScheduledProactive> {
+  $$ScheduledProactivesTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $PersonasTable _personaIdTable(_$AppDatabase db) =>
+      db.personas.createAlias($_aliasNameGenerator(
+          db.scheduledProactives.personaId, db.personas.id));
+
+  $$PersonasTableProcessedTableManager? get personaId {
+    if ($_item.personaId == null) return null;
+    final manager = $$PersonasTableTableManager($_db, $_db.personas)
+        .filter((f) => f.id($_item.personaId!));
+    final item = $_typedResult.readTableOrNull(_personaIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$ScheduledProactivesTableFilterComposer
+    extends Composer<_$AppDatabase, $ScheduledProactivesTable> {
+  $$ScheduledProactivesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get scheduledAt => $composableBuilder(
+      column: $table.scheduledAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get notificationId => $composableBuilder(
+      column: $table.notificationId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  $$PersonasTableFilterComposer get personaId {
+    final $$PersonasTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.personaId,
+        referencedTable: $db.personas,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$PersonasTableFilterComposer(
+              $db: $db,
+              $table: $db.personas,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ScheduledProactivesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ScheduledProactivesTable> {
+  $$ScheduledProactivesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get scheduledAt => $composableBuilder(
+      column: $table.scheduledAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get notificationId => $composableBuilder(
+      column: $table.notificationId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  $$PersonasTableOrderingComposer get personaId {
+    final $$PersonasTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.personaId,
+        referencedTable: $db.personas,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$PersonasTableOrderingComposer(
+              $db: $db,
+              $table: $db.personas,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ScheduledProactivesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ScheduledProactivesTable> {
+  $$ScheduledProactivesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<int> get scheduledAt => $composableBuilder(
+      column: $table.scheduledAt, builder: (column) => column);
+
+  GeneratedColumn<int> get notificationId => $composableBuilder(
+      column: $table.notificationId, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$PersonasTableAnnotationComposer get personaId {
+    final $$PersonasTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.personaId,
+        referencedTable: $db.personas,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$PersonasTableAnnotationComposer(
+              $db: $db,
+              $table: $db.personas,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ScheduledProactivesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $ScheduledProactivesTable,
+    ScheduledProactive,
+    $$ScheduledProactivesTableFilterComposer,
+    $$ScheduledProactivesTableOrderingComposer,
+    $$ScheduledProactivesTableAnnotationComposer,
+    $$ScheduledProactivesTableCreateCompanionBuilder,
+    $$ScheduledProactivesTableUpdateCompanionBuilder,
+    (ScheduledProactive, $$ScheduledProactivesTableReferences),
+    ScheduledProactive,
+    PrefetchHooks Function({bool personaId})> {
+  $$ScheduledProactivesTableTableManager(
+      _$AppDatabase db, $ScheduledProactivesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ScheduledProactivesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ScheduledProactivesTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ScheduledProactivesTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> personaId = const Value.absent(),
+            Value<String> content = const Value.absent(),
+            Value<int> scheduledAt = const Value.absent(),
+            Value<int?> notificationId = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<int> createdAt = const Value.absent(),
+          }) =>
+              ScheduledProactivesCompanion(
+            id: id,
+            personaId: personaId,
+            content: content,
+            scheduledAt: scheduledAt,
+            notificationId: notificationId,
+            status: status,
+            createdAt: createdAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int personaId,
+            required String content,
+            required int scheduledAt,
+            Value<int?> notificationId = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            required int createdAt,
+          }) =>
+              ScheduledProactivesCompanion.insert(
+            id: id,
+            personaId: personaId,
+            content: content,
+            scheduledAt: scheduledAt,
+            notificationId: notificationId,
+            status: status,
+            createdAt: createdAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$ScheduledProactivesTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({personaId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (personaId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.personaId,
+                    referencedTable: $$ScheduledProactivesTableReferences
+                        ._personaIdTable(db),
+                    referencedColumn: $$ScheduledProactivesTableReferences
+                        ._personaIdTable(db)
+                        .id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$ScheduledProactivesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $ScheduledProactivesTable,
+    ScheduledProactive,
+    $$ScheduledProactivesTableFilterComposer,
+    $$ScheduledProactivesTableOrderingComposer,
+    $$ScheduledProactivesTableAnnotationComposer,
+    $$ScheduledProactivesTableCreateCompanionBuilder,
+    $$ScheduledProactivesTableUpdateCompanionBuilder,
+    (ScheduledProactive, $$ScheduledProactivesTableReferences),
+    ScheduledProactive,
+    PrefetchHooks Function({bool personaId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6806,4 +7645,6 @@ class $AppDatabaseManager {
       $$MomentsTableTableManager(_db, _db.moments);
   $$SettingsTableTableTableManager get settingsTable =>
       $$SettingsTableTableTableManager(_db, _db.settingsTable);
+  $$ScheduledProactivesTableTableManager get scheduledProactives =>
+      $$ScheduledProactivesTableTableManager(_db, _db.scheduledProactives);
 }

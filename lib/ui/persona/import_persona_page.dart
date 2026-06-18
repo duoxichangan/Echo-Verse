@@ -164,7 +164,7 @@ class _ImportPersonaPageState extends ConsumerState<ImportPersonaPage> {
         const SizedBox(height: 20),
         const Icon(Icons.description_outlined, size: 56, color: WeChat.brand),
         const SizedBox(height: 16),
-        const Text('选择一个微信聊天记录 txt 文件',
+        const Text('选择一个聊天记录 txt 文件',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 16, color: WeChat.textPrimary)),
         const SizedBox(height: 8),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/di/providers.dart';
 import '../../domain/models/persona.dart';
+import '../../domain/models/proactive_tier.dart';
 import '../common/image_store.dart';
 import '../chat/wechat_theme.dart';
 import '../persona/persona_editor_page.dart';
@@ -70,6 +71,44 @@ class _PersonaProfilePageState extends ConsumerState<PersonaProfilePage> {
     }
   }
 
+  Future<void> _changeProactiveTier() async {
+    final p = _p;
+    if (p == null) return;
+    final current = ProactiveTier.fromIndex(p.proactiveTier);
+    final picked = await showModalBottomSheet<ProactiveTier>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('TA 主动找我的频率',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            ),
+            for (final t in ProactiveTier.values)
+              ListTile(
+                title: Text(t.label),
+                subtitle: Text(t.description),
+                trailing: t == current
+                    ? const Icon(Icons.check, color: WeChat.brand)
+                    : null,
+                onTap: () => Navigator.pop(context, t),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || picked == current) return;
+    await ref.read(personaRepoProvider).setProactiveTier(p.id, picked.index);
+    await _load();
+    // 档位变了立刻重排一次（开启→排下一条；关闭→下次对账不再排）。
+    try {
+      final engine = await ref.read(proactiveMessageEngineProvider.future);
+      await engine.scheduleNext(p.id);
+    } catch (_) {/* 排期失败不影响设置 */}
+  }
+
   // Persona 没有 copyWith，这里手动构造。
   Persona _copy({String? name, String? avatarPath}) {
     final p = _p!;
@@ -82,6 +121,7 @@ class _PersonaProfilePageState extends ConsumerState<PersonaProfilePage> {
       outwardPersonaJson: p.outwardPersonaJson,
       userAlias: p.userAlias,
       relationship: p.relationship,
+      proactiveTier: p.proactiveTier,
     );
   }
 
@@ -109,6 +149,10 @@ class _PersonaProfilePageState extends ConsumerState<PersonaProfilePage> {
                     _tile('头像', trailing: _avatar(), onTap: _changeAvatar),
                     _tile('备注名', subtitle: _p!.name, onTap: _changeName),
                     _tile('关系', subtitle: _p!.relationship ?? '未设置'),
+                    const SizedBox(height: 10),
+                    _tile('主动找我',
+                        subtitle: ProactiveTier.fromIndex(_p!.proactiveTier).label,
+                        onTap: _changeProactiveTier),
                     const SizedBox(height: 10),
                     _tile('编辑人设（L0–L5）', onTap: () {
                       Navigator.of(context)

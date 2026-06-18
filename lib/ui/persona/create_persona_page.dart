@@ -83,7 +83,7 @@ class _CreatePersonaPageState extends ConsumerState<CreatePersonaPage> {
             margin: EdgeInsets.zero,
             child: ListTile(
               leading: const Icon(Icons.upload_file, color: WeChat.brand),
-              title: const Text('从微信聊天记录导入'),
+              title: const Text('从聊天记录导入'),
               subtitle: const Text('提炼出“聊起来像本人”的人格'),
               trailing: const Icon(Icons.chevron_right, color: WeChat.textHint),
               onTap: () async {

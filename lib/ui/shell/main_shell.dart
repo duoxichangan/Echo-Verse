@@ -1,20 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../main.dart' show runProactiveBootstrap;
 import '../home/home_page.dart';
 import '../me/me_page.dart';
 import '../moments/discover_page.dart';
 import '../chat/wechat_theme.dart';
 
 /// 应用主框架：底部 Tab（微信 / 发现 / 我），1:1 复刻微信主结构。
-class MainShell extends StatefulWidget {
+class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends ConsumerState<MainShell>
+    with WidgetsBindingObserver {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 回前台：跑一次主动性对账（投递到点主动消息 + 重排下一条）。
+    if (state == AppLifecycleState.resumed) {
+      runProactiveBootstrap(ProviderScope.containerOf(context, listen: false));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

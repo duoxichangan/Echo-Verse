@@ -13,6 +13,9 @@ class Personas extends Table {
   TextColumn get outwardPersonaJson => text().nullable()();
   TextColumn get userAlias => text().nullable()();
   TextColumn get relationship => text().nullable()();
+
+  /// 主动找用户的频率档位（0=关闭，见 ProactiveTier）。
+  IntColumn get proactiveTier => integer().withDefault(const Constant(0))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
 }
@@ -117,4 +120,26 @@ class SettingsTable extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+}
+
+/// 已排期的主动消息（App 被杀/通知到点后，下次启动转成正式 message）。
+///
+/// 预生成模式：App 活着时提前用 LLM 写好 content 并排本地通知；到点（或下次启动
+/// 对账）把它投递成 messages 行（isProactive=true）。
+class ScheduledProactives extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get personaId => integer().references(Personas, #id)();
+
+  /// 预生成的主动消息正文（可能含 ‹SEP› 分条标记，投递时按聊天规则处理）。
+  TextColumn get content => text()();
+
+  /// 计划触发时间戳（毫秒）。
+  IntColumn get scheduledAt => integer()();
+
+  /// 关联的本地通知 ID（便于取消）。
+  IntColumn get notificationId => integer().nullable()();
+
+  /// scheduled / delivered / cancelled。
+  TextColumn get status => text().withDefault(const Constant('scheduled'))();
+  IntColumn get createdAt => integer()();
 }

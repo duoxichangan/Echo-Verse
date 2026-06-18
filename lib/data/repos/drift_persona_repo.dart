@@ -35,6 +35,16 @@ class DriftPersonaRepo implements PersonaRepo {
       outwardPersonaJson: Value(persona.outwardPersonaJson),
       userAlias: Value(persona.userAlias),
       relationship: Value(persona.relationship),
+      proactiveTier: Value(persona.proactiveTier),
+      updatedAt: Value(nowMs()),
+    ));
+  }
+
+  @override
+  Future<void> setProactiveTier(int id, int tier) async {
+    await (db.update(db.personas)..where((p) => p.id.equals(id)))
+        .write(PersonasCompanion(
+      proactiveTier: Value(tier),
       updatedAt: Value(nowMs()),
     ));
   }
@@ -86,6 +96,7 @@ class DriftPersonaRepo implements PersonaRepo {
       await (db.delete(db.sessionSummaries)..where((t) => t.personaId.equals(id))).go();
       await (db.delete(db.stickers)..where((t) => t.personaId.equals(id))).go();
       await (db.delete(db.messages)..where((t) => t.personaId.equals(id))).go();
+      await (db.delete(db.scheduledProactives)..where((t) => t.personaId.equals(id))).go();
       await (db.delete(db.personas)..where((t) => t.id.equals(id))).go();
     });
   }
@@ -99,5 +110,6 @@ class DriftPersonaRepo implements PersonaRepo {
         outwardPersonaJson: row.outwardPersonaJson,
         userAlias: row.userAlias,
         relationship: row.relationship,
+        proactiveTier: row.proactiveTier,
       );
 }

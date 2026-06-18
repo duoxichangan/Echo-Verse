@@ -20,6 +20,7 @@ part 'database.g.dart';
     Stickers,
     Moments,
     SettingsTable,
+    ScheduledProactives,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -29,7 +30,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -51,6 +52,11 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(settingsTable, settingsTable.userName);
             await m.addColumn(settingsTable, settingsTable.userAvatarPath);
             await m.addColumn(settingsTable, settingsTable.momentFrequency);
+          }
+          // v2→v3：personas 加主动频率档位 + 新增 scheduled_proactives 表。
+          if (from < 3) {
+            await m.addColumn(personas, personas.proactiveTier);
+            await m.createTable(scheduledProactives);
           }
         },
       );

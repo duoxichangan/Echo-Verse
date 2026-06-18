@@ -7,6 +7,7 @@ import '../../app/di/providers.dart';
 import '../../domain/models/moment.dart';
 import '../chat/chat_bubble.dart' show formatWeChatTime;
 import '../chat/wechat_theme.dart';
+import '../common/wechat_emoji.dart';
 
 /// 发现页 / 朋友圈（聚合所有数字人的动态，1:1 复刻微信朋友圈）。
 ///
@@ -99,7 +100,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                         fontWeight: FontWeight.w600,
                         fontSize: 15)),
                 const SizedBox(height: 4),
-                Text(m.content,
+                Text(convertWeChatEmoji(m.content),
                     style: const TextStyle(fontSize: 16, color: WeChat.textPrimary, height: 1.4)),
                 const SizedBox(height: 6),
                 Row(
