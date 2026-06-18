@@ -44,6 +44,9 @@ class ChatPrompts {
           '“你这是刚睡醒？都下午${now.hour > 12 ? now.hour - 12 : now.hour}点啦”之类，'
           '而不是平淡地回个“早”。');
       b.writeln('- 但别刻意报时、别每句都提时间，自然就好。');
+      b.writeln('- **如果对方直接问你"几点了""现在几点""今天几号"之类的问题，'
+          '你必须根据上面【现在的时间】如实回答，不能瞎编。** '
+          '例：「现在下午3点42啦」「今天周四，6月18号」。');
     }
 
     if (memoryBlock != null && memoryBlock.trim().isNotEmpty) {
