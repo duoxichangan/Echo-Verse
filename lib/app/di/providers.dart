@@ -36,6 +36,7 @@ import '../proact/default_scheduler.dart';
 import '../proact/local_notification_port.dart';
 import '../proact/proactive_message_engine.dart';
 import '../social/default_social_service.dart';
+import '../unread/unread_notifier.dart';
 
 /// 全局依赖注入总线（手册 INFRA-01）。
 /// 所有单例 / 工厂在此注册，UI 与应用层只通过契约类型消费。
@@ -153,7 +154,7 @@ final schedulerProvider = Provider<Scheduler>((ref) {
   final s = ref.watch(settingsProvider).valueOrNull;
   return DefaultScheduler(
     activeHours: ActiveHours.fromJson(s?.activeHoursJson ?? '{}'),
-    dailyQuota: s?.dailyProactiveQuota ?? 5,
+    dailyQuota: s?.dailyProactiveQuota ?? 12,
   );
 });
 
@@ -186,6 +187,15 @@ final proactiveMessageEngineProvider =
     notifications: ref.watch(notificationPortProvider),
     activeHours: ActiveHours.fromJson(settings?.activeHoursJson ?? '{}'),
   );
+});
+
+// ── 未读追踪 ──────────────────────────────────────────────
+
+/// 未读消息计数器（Map<personaId, unreadCount>），可用于红点角标。
+/// 监听 messages 表变更自动刷新。
+final unreadNotifierProvider =
+    StateNotifierProvider<UnreadNotifier, Map<int, int>>((ref) {
+  return UnreadNotifier(ref.watch(databaseProvider));
 });
 
 // ── 批次 E 社交 ───────────────────────────────────────────

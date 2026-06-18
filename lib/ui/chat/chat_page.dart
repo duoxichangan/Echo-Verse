@@ -47,6 +47,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     super.initState();
     _inputCtrl.addListener(() => setState(() {})); // 输入变化切换发送按钮
     _loadHistory();
+    // 进聊天页 → 该数字人未读清零（微信逻辑）。
+    ref.read(unreadNotifierProvider.notifier).markAsRead(widget.personaId);
     // 把刚提炼出的 pending 开放回路纳入调度（预约通知）。失败不影响聊天。
     ref.read(openLoopEngineProvider).processPending(widget.personaId).ignore();
   }

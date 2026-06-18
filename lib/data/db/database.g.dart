@@ -635,9 +635,14 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("is_proactive" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _readAtMeta = const VerificationMeta('readAt');
+  @override
+  late final GeneratedColumn<int> readAt = GeneratedColumn<int>(
+      'read_at', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, personaId, sender, content, type, createdAt, isProactive];
+      [id, personaId, sender, content, type, createdAt, isProactive, readAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -685,6 +690,10 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
           isProactive.isAcceptableOrUnknown(
               data['is_proactive']!, _isProactiveMeta));
     }
+    if (data.containsKey('read_at')) {
+      context.handle(_readAtMeta,
+          readAt.isAcceptableOrUnknown(data['read_at']!, _readAtMeta));
+    }
     return context;
   }
 
@@ -708,6 +717,8 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
           .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
       isProactive: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_proactive'])!,
+      readAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}read_at']),
     );
   }
 
@@ -725,6 +736,9 @@ class Message extends DataClass implements Insertable<Message> {
   final String type;
   final int createdAt;
   final bool isProactive;
+
+  /// 用户已读时间戳（毫秒）；null = 未读。
+  final int? readAt;
   const Message(
       {required this.id,
       required this.personaId,
@@ -732,7 +746,8 @@ class Message extends DataClass implements Insertable<Message> {
       required this.content,
       required this.type,
       required this.createdAt,
-      required this.isProactive});
+      required this.isProactive,
+      this.readAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -743,6 +758,9 @@ class Message extends DataClass implements Insertable<Message> {
     map['type'] = Variable<String>(type);
     map['created_at'] = Variable<int>(createdAt);
     map['is_proactive'] = Variable<bool>(isProactive);
+    if (!nullToAbsent || readAt != null) {
+      map['read_at'] = Variable<int>(readAt);
+    }
     return map;
   }
 
@@ -755,6 +773,8 @@ class Message extends DataClass implements Insertable<Message> {
       type: Value(type),
       createdAt: Value(createdAt),
       isProactive: Value(isProactive),
+      readAt:
+          readAt == null && nullToAbsent ? const Value.absent() : Value(readAt),
     );
   }
 
@@ -769,6 +789,7 @@ class Message extends DataClass implements Insertable<Message> {
       type: serializer.fromJson<String>(json['type']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       isProactive: serializer.fromJson<bool>(json['isProactive']),
+      readAt: serializer.fromJson<int?>(json['readAt']),
     );
   }
   @override
@@ -782,6 +803,7 @@ class Message extends DataClass implements Insertable<Message> {
       'type': serializer.toJson<String>(type),
       'createdAt': serializer.toJson<int>(createdAt),
       'isProactive': serializer.toJson<bool>(isProactive),
+      'readAt': serializer.toJson<int?>(readAt),
     };
   }
 
@@ -792,7 +814,8 @@ class Message extends DataClass implements Insertable<Message> {
           String? content,
           String? type,
           int? createdAt,
-          bool? isProactive}) =>
+          bool? isProactive,
+          Value<int?> readAt = const Value.absent()}) =>
       Message(
         id: id ?? this.id,
         personaId: personaId ?? this.personaId,
@@ -801,6 +824,7 @@ class Message extends DataClass implements Insertable<Message> {
         type: type ?? this.type,
         createdAt: createdAt ?? this.createdAt,
         isProactive: isProactive ?? this.isProactive,
+        readAt: readAt.present ? readAt.value : this.readAt,
       );
   Message copyWithCompanion(MessagesCompanion data) {
     return Message(
@@ -812,6 +836,7 @@ class Message extends DataClass implements Insertable<Message> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       isProactive:
           data.isProactive.present ? data.isProactive.value : this.isProactive,
+      readAt: data.readAt.present ? data.readAt.value : this.readAt,
     );
   }
 
@@ -824,14 +849,15 @@ class Message extends DataClass implements Insertable<Message> {
           ..write('content: $content, ')
           ..write('type: $type, ')
           ..write('createdAt: $createdAt, ')
-          ..write('isProactive: $isProactive')
+          ..write('isProactive: $isProactive, ')
+          ..write('readAt: $readAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, personaId, sender, content, type, createdAt, isProactive);
+  int get hashCode => Object.hash(
+      id, personaId, sender, content, type, createdAt, isProactive, readAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -842,7 +868,8 @@ class Message extends DataClass implements Insertable<Message> {
           other.content == this.content &&
           other.type == this.type &&
           other.createdAt == this.createdAt &&
-          other.isProactive == this.isProactive);
+          other.isProactive == this.isProactive &&
+          other.readAt == this.readAt);
 }
 
 class MessagesCompanion extends UpdateCompanion<Message> {
@@ -853,6 +880,7 @@ class MessagesCompanion extends UpdateCompanion<Message> {
   final Value<String> type;
   final Value<int> createdAt;
   final Value<bool> isProactive;
+  final Value<int?> readAt;
   const MessagesCompanion({
     this.id = const Value.absent(),
     this.personaId = const Value.absent(),
@@ -861,6 +889,7 @@ class MessagesCompanion extends UpdateCompanion<Message> {
     this.type = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isProactive = const Value.absent(),
+    this.readAt = const Value.absent(),
   });
   MessagesCompanion.insert({
     this.id = const Value.absent(),
@@ -870,6 +899,7 @@ class MessagesCompanion extends UpdateCompanion<Message> {
     this.type = const Value.absent(),
     required int createdAt,
     this.isProactive = const Value.absent(),
+    this.readAt = const Value.absent(),
   })  : personaId = Value(personaId),
         sender = Value(sender),
         content = Value(content),
@@ -882,6 +912,7 @@ class MessagesCompanion extends UpdateCompanion<Message> {
     Expression<String>? type,
     Expression<int>? createdAt,
     Expression<bool>? isProactive,
+    Expression<int>? readAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -891,6 +922,7 @@ class MessagesCompanion extends UpdateCompanion<Message> {
       if (type != null) 'type': type,
       if (createdAt != null) 'created_at': createdAt,
       if (isProactive != null) 'is_proactive': isProactive,
+      if (readAt != null) 'read_at': readAt,
     });
   }
 
@@ -901,7 +933,8 @@ class MessagesCompanion extends UpdateCompanion<Message> {
       Value<String>? content,
       Value<String>? type,
       Value<int>? createdAt,
-      Value<bool>? isProactive}) {
+      Value<bool>? isProactive,
+      Value<int?>? readAt}) {
     return MessagesCompanion(
       id: id ?? this.id,
       personaId: personaId ?? this.personaId,
@@ -910,6 +943,7 @@ class MessagesCompanion extends UpdateCompanion<Message> {
       type: type ?? this.type,
       createdAt: createdAt ?? this.createdAt,
       isProactive: isProactive ?? this.isProactive,
+      readAt: readAt ?? this.readAt,
     );
   }
 
@@ -937,6 +971,9 @@ class MessagesCompanion extends UpdateCompanion<Message> {
     if (isProactive.present) {
       map['is_proactive'] = Variable<bool>(isProactive.value);
     }
+    if (readAt.present) {
+      map['read_at'] = Variable<int>(readAt.value);
+    }
     return map;
   }
 
@@ -949,7 +986,8 @@ class MessagesCompanion extends UpdateCompanion<Message> {
           ..write('content: $content, ')
           ..write('type: $type, ')
           ..write('createdAt: $createdAt, ')
-          ..write('isProactive: $isProactive')
+          ..write('isProactive: $isProactive, ')
+          ..write('readAt: $readAt')
           ..write(')'))
         .toString();
   }
@@ -3252,7 +3290,7 @@ class $SettingsTableTable extends SettingsTable
       'daily_proactive_quota', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
-      defaultValue: const Constant(5));
+      defaultValue: const Constant(12));
   static const VerificationMeta _tokenBudgetMeta =
       const VerificationMeta('tokenBudget');
   @override
@@ -5029,6 +5067,7 @@ typedef $$MessagesTableCreateCompanionBuilder = MessagesCompanion Function({
   Value<String> type,
   required int createdAt,
   Value<bool> isProactive,
+  Value<int?> readAt,
 });
 typedef $$MessagesTableUpdateCompanionBuilder = MessagesCompanion Function({
   Value<int> id,
@@ -5038,6 +5077,7 @@ typedef $$MessagesTableUpdateCompanionBuilder = MessagesCompanion Function({
   Value<String> type,
   Value<int> createdAt,
   Value<bool> isProactive,
+  Value<int?> readAt,
 });
 
 final class $$MessagesTableReferences
@@ -5084,6 +5124,9 @@ class $$MessagesTableFilterComposer
 
   ColumnFilters<bool> get isProactive => $composableBuilder(
       column: $table.isProactive, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get readAt => $composableBuilder(
+      column: $table.readAt, builder: (column) => ColumnFilters(column));
 
   $$PersonasTableFilterComposer get personaId {
     final $$PersonasTableFilterComposer composer = $composerBuilder(
@@ -5133,6 +5176,9 @@ class $$MessagesTableOrderingComposer
   ColumnOrderings<bool> get isProactive => $composableBuilder(
       column: $table.isProactive, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get readAt => $composableBuilder(
+      column: $table.readAt, builder: (column) => ColumnOrderings(column));
+
   $$PersonasTableOrderingComposer get personaId {
     final $$PersonasTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -5180,6 +5226,9 @@ class $$MessagesTableAnnotationComposer
 
   GeneratedColumn<bool> get isProactive => $composableBuilder(
       column: $table.isProactive, builder: (column) => column);
+
+  GeneratedColumn<int> get readAt =>
+      $composableBuilder(column: $table.readAt, builder: (column) => column);
 
   $$PersonasTableAnnotationComposer get personaId {
     final $$PersonasTableAnnotationComposer composer = $composerBuilder(
@@ -5232,6 +5281,7 @@ class $$MessagesTableTableManager extends RootTableManager<
             Value<String> type = const Value.absent(),
             Value<int> createdAt = const Value.absent(),
             Value<bool> isProactive = const Value.absent(),
+            Value<int?> readAt = const Value.absent(),
           }) =>
               MessagesCompanion(
             id: id,
@@ -5241,6 +5291,7 @@ class $$MessagesTableTableManager extends RootTableManager<
             type: type,
             createdAt: createdAt,
             isProactive: isProactive,
+            readAt: readAt,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5250,6 +5301,7 @@ class $$MessagesTableTableManager extends RootTableManager<
             Value<String> type = const Value.absent(),
             required int createdAt,
             Value<bool> isProactive = const Value.absent(),
+            Value<int?> readAt = const Value.absent(),
           }) =>
               MessagesCompanion.insert(
             id: id,
@@ -5259,6 +5311,7 @@ class $$MessagesTableTableManager extends RootTableManager<
             type: type,
             createdAt: createdAt,
             isProactive: isProactive,
+            readAt: readAt,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) =>

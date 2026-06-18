@@ -36,6 +36,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _busy = false; // 导出/导入进行中
   String? _opsMsg; // 数据管理结果提示
   double _momentFreq = 30; // 朋友圈活跃度 0–100
+  double _dailyQuota = 12; // 每日主动配额
 
   // PLACEHOLDER_METHODS
 
@@ -110,6 +111,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _modelCtrl.text = settings.model;
       _keyCtrl.text = key ?? '';
       _momentFreq = settings.momentFrequency.toDouble();
+      _dailyQuota = settings.dailyProactiveQuota.toDouble();
       _loaded = true;
     });
   }
@@ -122,6 +124,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             baseUrl: _baseUrlCtrl.text.trim(),
             model: _modelCtrl.text.trim(),
             momentFrequency: _momentFreq.round(),
+            dailyProactiveQuota: _dailyQuota.round(),
           ),
         );
     final key = _keyCtrl.text.trim();
@@ -266,6 +269,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             activeColor: const Color(0xFF07C160),
             label: '${_momentFreq.round()}',
             onChanged: (v) => setState(() => _momentFreq = v),
+            onChangeEnd: (_) => _save(),
+          ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 8),
+          const Text('每日主动配额',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          Text(
+            '所有数字人主动消息+朋友圈的总和上限：${_dailyQuota.round()} 条/天',
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+          Slider(
+            value: _dailyQuota,
+            min: 0,
+            max: 30,
+            divisions: 30,
+            activeColor: const Color(0xFF07C160),
+            label: '${_dailyQuota.round()}',
+            onChanged: (v) => setState(() => _dailyQuota = v),
             onChangeEnd: (_) => _save(),
           ),
           const SizedBox(height: 16),

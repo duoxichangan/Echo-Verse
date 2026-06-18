@@ -29,6 +29,9 @@ class Messages extends Table {
   TextColumn get type => text().withDefault(const Constant('text'))(); // text/sticker/placeholder
   IntColumn get createdAt => integer()();
   BoolColumn get isProactive => boolean().withDefault(const Constant(false))();
+
+  /// 用户已读时间戳（毫秒）；null = 未读。
+  IntColumn get readAt => integer().nullable()();
 }
 
 /// §6.3 L1 滚动会话摘要
@@ -108,7 +111,7 @@ class SettingsTable extends Table {
   TextColumn get baseUrl => text()();
   TextColumn get model => text()();
   TextColumn get activeHours => text().withDefault(const Constant('{}'))();
-  IntColumn get dailyProactiveQuota => integer().withDefault(const Constant(5))();
+  IntColumn get dailyProactiveQuota => integer().withDefault(const Constant(12))();
   IntColumn get tokenBudget => integer().withDefault(const Constant(4000))();
 
   /// 全局“我”——用户昵称与头像（所有数字人共用一个用户身份）。

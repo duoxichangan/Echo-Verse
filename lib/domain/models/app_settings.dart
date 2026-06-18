@@ -31,7 +31,7 @@ class AppSettings {
     required this.baseUrl,
     required this.model,
     this.activeHoursJson = '{}',
-    this.dailyProactiveQuota = 5,
+    this.dailyProactiveQuota = 12,
     this.tokenBudget = 4000,
     this.userName = '我',
     this.userAvatarPath,

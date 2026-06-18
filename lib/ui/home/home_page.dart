@@ -1,6 +1,6 @@
-import 'package:drift/drift.dart' show Value;
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -28,6 +28,9 @@ class _HomePageState extends ConsumerState<HomePage> {
   bool _loading = true;
   bool _seeding = false;
 
+  /// 每个数字人的最后一条消息（personaId → content）。
+  Map<int, String> _lastMsg = {};
+
   @override
   void initState() {
     super.initState();
@@ -37,9 +40,25 @@ class _HomePageState extends ConsumerState<HomePage> {
   Future<void> _load() async {
     final db = ref.read(databaseProvider);
     final rows = await db.select(db.personas).get();
+    // 加载最后一条消息预览
+    final lastRows = await db.customSelect(
+      'SELECT m.persona_id, m.content FROM messages m '
+      'INNER JOIN ('
+      '  SELECT persona_id, MAX(created_at) AS max_at '
+      '  FROM messages GROUP BY persona_id'
+      ') latest ON m.persona_id = latest.persona_id AND m.created_at = latest.max_at',
+    ).get();
+    final lastMap = <int, String>{};
+    for (final r in lastRows) {
+      lastMap[r.read<int>('persona_id')] = r.read<String>('content');
+    }
+    // 刷新未读数
+    ref.read(unreadNotifierProvider.notifier).refresh();
+
     if (!mounted) return;
     setState(() {
       _personas = rows;
+      _lastMsg = lastMap;
       _loading = false;
     });
   }
@@ -66,7 +85,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 ''',
     );
 
-    // 播种两条长程事实，让“记忆感”立刻能体现。
+    // 播种两条长程事实，让"记忆感"立刻能体现。
     await db.into(db.facts).insert(FactsCompanion.insert(
           personaId: id,
           content: '笨蛋（用户）最近在准备一个重要的工作汇报',
@@ -95,6 +114,9 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // 监听未读计数变化
+    ref.watch(unreadNotifierProvider);
+
     return Scaffold(
       backgroundColor: WeChat.bg,
       appBar: AppBar(
@@ -171,6 +193,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _list() {
+    final unreads = ref.watch(unreadNotifierProvider);
     return ListView.separated(
       itemCount: _personas.length,
       separatorBuilder: (_, _) => const Divider(
@@ -181,6 +204,8 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
       itemBuilder: (_, i) {
         final p = _personas[i];
+        final unread = unreads[p.id] ?? 0;
+        final last = _lastMsg[p.id];
         return ListTile(
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -190,13 +215,41 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
           title: Text(
             p.name,
-            style: const TextStyle(
-                fontSize: 17, color: WeChat.textPrimary),
+            style: TextStyle(
+              fontSize: 17,
+              color: WeChat.textPrimary,
+              fontWeight: unread > 0 ? FontWeight.w600 : FontWeight.w400,
+            ),
           ),
           subtitle: Text(
-            p.relationship ?? '点进来聊天',
-            style: const TextStyle(fontSize: 14, color: WeChat.textHint),
+            last ?? p.relationship ?? '点进来聊天',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              color: unread > 0 ? WeChat.textPrimary : WeChat.textHint,
+              fontWeight: unread > 0 ? FontWeight.w500 : FontWeight.w400,
+            ),
           ),
+          trailing: unread > 0
+              ? Container(
+                  width: unread > 99 ? 28 : 22,
+                  height: 22,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFA5151), // 微信红
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    unread > 99 ? '99+' : '$unread',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              : null,
           onTap: () => Navigator.of(context)
               .push(MaterialPageRoute(
                 builder: (_) => ChatPage(
