@@ -19,8 +19,8 @@ class LocalNotificationPort implements NotificationPort {
 
   LocalNotificationPort({this.onTap});
 
-  static const _channelId = 'proactive';
-  static const _channelName = '主动消息';
+  static const _channelId = 'proactive_v2';
+  static const _channelName = '主动消息(声音)';
 
   Future<void> init() async {
     if (_inited) return;
@@ -63,6 +63,8 @@ class LocalNotificationPort implements NotificationPort {
           channelDescription: '数字人到点主动来找你',
           importance: Importance.high,
           priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
