@@ -3,14 +3,14 @@ import 'dart:convert';
 /// 作息表（活动调度中枢用，说明书 §7.6）。
 ///
 /// 唯一作息定义：活跃时段 [startHour, endHour)（24 小时制）。
-/// 其余为安静时段，不主动打扰（除非人设是夜猫子——可把 endHour 设大）。
+/// 其余为安静时段，不主动打扰。默认 8:00–24:00（午夜）。
 class ActiveHours {
   final int startHour; // 含
   final int endHour; // 不含
 
-  const ActiveHours({this.startHour = 8, this.endHour = 23});
+  const ActiveHours({this.startHour = 8, this.endHour = 24});
 
-  /// 从 settings 的 activeHoursJson 解析；坏值/缺省回退默认 8–23。
+  /// 从 settings 的 activeHoursJson 解析；坏值/缺省回退默认 8–24。
   factory ActiveHours.fromJson(String jsonStr) {
     try {
       final m = jsonDecode(jsonStr);
@@ -19,7 +19,7 @@ class ActiveHours {
         final e = m['end'];
         return ActiveHours(
           startHour: s is num ? s.toInt() : 8,
-          endHour: e is num ? e.toInt() : 23,
+          endHour: e is num ? e.toInt() : 24,
         );
       }
     } catch (_) {/* 回退默认 */}

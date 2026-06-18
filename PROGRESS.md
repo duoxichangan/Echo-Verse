@@ -15,6 +15,33 @@
 
 > 🎉 四个 Phase（MVP / 主动性 / 社交）全部落地。Phase 4 扩展（多人/群聊/iOS/云备份/Claude适配器/embedding）按需。
 
+> 本轮（2026-06-18）：**未读红点系统 + 话唠档位 + 滚动修复 + Release 防闪退 + GitHub Release v1.1.0**
+>
+> ### 未读红点系统
+> ① schema v3→v4：`messages` 表新增 `read_at` 列（nullable int，null=未读）+ 迁移
+> ② `lib/app/unread/unread_notifier.dart`：未读追踪器（`refresh()` 查未读数、`markAsRead(pid)` 标已读、`total` 总未读）
+> ③ 会话列表（`home_page.dart`）：最后消息预览 + 微信红点角标 ②（未读数），有未读时标题加粗变色
+> ④ 底部 Tab（`main_shell.dart`）："Ta们" 上显示总未读角标 ③
+> ⑤ 标已读时机（`chat_page.dart`）：**不在 dispose 里标**（异步 SQL 跟首页 refresh 竞态），改为
+>    `_loadHistory()` 加载完历史消息后标 + `_send()` AI 回复全部显示后标——消息显示到屏幕上就标
+>
+> ### 主动频率扩展
+> ⑥ `ProactiveTier` 新增「话唠」（2.5h 间隔，~10次/天）和「话痨狂魔」（1.2h 间隔，~15-20次/天）
+> ⑦ `avgGapHours` 改为 `double` 支持小数间隔
+> ⑧ 设置页新增「每日主动配额」滑块（0–30），默认从 5 提到 12
+>
+> ### 滚动修复
+> ⑨ `_jumpToBottom` / `_scrollToBottom`：双重 `addPostFrameCallback` 等 layout 完成再滚
+> ⑩ 键盘弹起自动滚底：`build()` 里读 `MediaQuery.viewInsets.bottom`，检测键盘 0→>0 时等 400ms 动画后滚动
+>
+> ### Release 防闪退
+> ⑪ 新建 `android/app/proguard-rules.pro`：保护 flutter_local_notifications 的 Gson 反射调用 + ScheduledNotificationReceiver
+> ⑫ `build.gradle.kts` 的 release build type 启用 R8 代码混淆 + 资源压缩 + 引用 proguard 规则
+>
+> ### 其他
+> ⑬ README 顶部添加 logo 图片
+> ⑭ 发布 GitHub Release v1.1.0（tag + APK）
+
 > 修复（提交 `861f88a`）：txt 解析改「本地优先 + LLM 兜底 + 多轮凝练」——规整导出格式
 > （`时间 '说话人'` 头）本地正则全量切分（实测 17220 行→5735 条全部识别），超长记录提炼走
 > map-reduce 分批读完全部。此前「全交 LLM 逐条重输出」会因输出截断只识别出 1 条。
@@ -183,18 +210,20 @@
 | E / 社交 | 对外人格、纯文字朋友圈、点赞感知跨场景提起、朋友圈页 | ✅ |
 | F / 扩展 | 多人/群聊、iOS、云备份、Claude 适配器、GPT embedding 增强 | ⬜ 按需 |
 
-`flutter analyze` 0 问题；`flutter test` 81 项通过；`flutter build apk --debug` 通过。
+`flutter analyze` 0 问题；`flutter test` 120 项通过；`flutter build apk --release` 通过（58.8MB）。
 
 ## 已知限制 / 接真 key 后需验证
 
 - **未真机/真 key 跑通**：所有 LLM 环节（对话/解析/提炼/朋友圈）由 MockAdapter 单测覆盖，
   真实模型的输出质量、像不像本人，需配 key 后 `flutter run` 实测校准（这是 MVP 灵魂验收）。
-- **本地通知到点弹**：`LocalNotificationPort` 已封装 zonedSchedule，但关 App 到点弹通知需真机验证
-  （含 Android 通知权限、精确闹钟权限）。补发对账逻辑已单测。
-- **点开通知 → 落消息**：`NotificationPort.onTap` 回调骨架已留，main 里尚未把点开通知路由到对应聊天页
-  并按人设 LLM 生成完整消息（当前补发用 plannedAction 文本占位，§8.4 可升级为 LLM 生成）。
+- **本地通知到点弹**：`LocalNotificationPort` 已封装 zonedSchedule，release APK 已加 ProGuard 规则
+  防 R8 删 Gson 泛型闪退。关 App 到点弹通知需真机验证（含 Android 通知权限、精确闹钟权限）。
+- **点开通知 → 落消息** ✅ 已解决：`_onNotificationTap` 先跑 `runProactiveBootstrap` 对账投递、
+  再 `navigatorKey` 路由到对应 ChatPage。
 - **朋友圈自动发布**：`maybePublish` 受调度约束，但目前靠朋友圈页右上手动触发；尚无"作息到点自动发"的定时驱动。
 - **txt 导入图片/表情迁移**：备份不含表情图片文件本身（只存路径），换机需另行迁移图片。
+- **App 图标角标**：桌面上的红点数字角标暂未做（需要 `flutter_app_badger` 或原生实现），
+  当前通知弹窗时 Android 系统默认可能显示红点，但不精确对应未读计数。
 
 ## Phase 4 可选扩展（手册批次 F）
 
@@ -237,9 +266,9 @@
 
 ```bash
 cd virtual
-git log --oneline      # 应看到 M0→批次E 共 12 个提交
-flutter analyze        # 应无问题
-flutter test           # 81 项通过
+git log --oneline      # 应看到 M0→v1.1.0 共 15+ 个提交
+flutter analyze        # 应无问题（仅 2 个 pre-existing info/warning）
+flutter test           # 120 项通过
 ```
 
 四个 Phase 已全部实现。**最有价值的下一步是接真 key 在真机/模拟器 `flutter run` 跑一遍**，

@@ -37,7 +37,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     _load();
   }
 
-  Future<void> _load() async {
+  /// 加载会话列表。
+  ///
+  /// [clearPid]：从聊天页返回时传入，先兜底标已读再刷新未读数，
+  /// 确保 SQL UPDATE 一定完成，不与 [UnreadNotifier.refresh] 竞态。
+  Future<void> _load({int? clearPid}) async {
+    if (clearPid != null) {
+      await ref.read(unreadNotifierProvider.notifier).markAsRead(clearPid);
+    }
     final db = ref.read(databaseProvider);
     final rows = await db.select(db.personas).get();
     // 加载最后一条消息预览
@@ -53,7 +60,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       lastMap[r.read<int>('persona_id')] = r.read<String>('content');
     }
     // 刷新未读数
-    ref.read(unreadNotifierProvider.notifier).refresh();
+    await ref.read(unreadNotifierProvider.notifier).refresh();
 
     if (!mounted) return;
     setState(() {
@@ -258,7 +265,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   peerAvatarPath: p.avatarPath,
                 ),
               ))
-              .then((_) => _load()),
+              .then((_) => _load(clearPid: p.id)),
           onLongPress: () => _confirmDelete(p),
         );
       },
