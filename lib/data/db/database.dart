@@ -30,7 +30,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -57,6 +57,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 3) {
             await m.addColumn(personas, personas.proactiveTier);
             await m.createTable(scheduledProactives);
+          }
+          // v3→v4：messages 加 read_at 列（未读追踪）。
+          if (from < 4) {
+            await m.addColumn(messages, messages.readAt);
           }
         },
       );

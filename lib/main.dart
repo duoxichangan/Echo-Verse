@@ -89,12 +89,53 @@ class VirtualApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Echo Verse',
+      title: 'EchoVerse',
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromARGB(255, 255, 255, 255)),
         useMaterial3: true,
+        // 微信风格统一灰调：所有表面均为 #EDEDED，仅绿色图标做点缀
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF07C160),       // 微信绿（仅图标/强调）
+          onPrimary: Colors.white,
+          surface: Color(0xFFEDEDED),       // 卡片/弹出菜单/下拉框 → 微信灰
+          onSurface: Color(0xFF191919),     // 主文字色
+          surfaceContainerHighest: Color(0xFFF7F7F7),
+          outline: Color(0xFFD9D9D9),       // 分割线
+        ),
+        scaffoldBackgroundColor: const Color(0xFFEDEDED),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFEDEDED),
+          foregroundColor: Color(0xFF191919),
+          surfaceTintColor: Colors.transparent,
+        ),
+        popupMenuTheme: const PopupMenuThemeData(
+          color: Color(0xFFEDEDED),
+          surfaceTintColor: Colors.transparent,
+        ),
+        cardTheme: const CardThemeData(
+          color: Color(0xFFEDEDED),
+          surfaceTintColor: Colors.transparent,
+        ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: Color(0xFFEDEDED),
+          surfaceTintColor: Colors.transparent,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFFF7F7F7),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(4),
+            borderSide: const BorderSide(color: Color(0xFFD9D9D9)),
+          ),
+        ),
+        // Material 3 下拉菜单 → 微信灰
+        menuTheme: const MenuThemeData(
+          style: MenuStyle(
+            backgroundColor: WidgetStatePropertyAll(Color(0xFFEDEDED)),
+            surfaceTintColor: WidgetStatePropertyAll(Colors.transparent),
+          ),
+        ),
       ),
       home: const MainShell(),
     );

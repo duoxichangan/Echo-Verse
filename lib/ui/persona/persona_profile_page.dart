@@ -185,7 +185,7 @@ class _PersonaProfilePageState extends ConsumerState<PersonaProfilePage> {
 
   Widget _tile(String title, {String? subtitle, Widget? trailing, VoidCallback? onTap}) {
     return Container(
-      color: Colors.white,
+      color: WeChat.bg,
       margin: const EdgeInsets.only(bottom: 0.5),
       child: ListTile(
         title: Text(title, style: const TextStyle(fontSize: 16)),

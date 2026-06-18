@@ -23,8 +23,11 @@ class ProactivePrompts {
     if (now != null) {
       b.writeln();
       b.writeln('【现在的时间】${_humanTime(now)}');
-      b.writeln('结合时间自然起头：早上可以道早/问起没起，饭点问吃没吃，'
-          '深夜可以说睡不着/催对方睡，周末和工作日语气不同。');
+      b.writeln('这就是你此刻所处的真实时间。你发的消息必须和这个时间完全一致——');
+      b.writeln('- 早上(6-11点)才发"早""起了没"；深夜(23-6点)才发"睡不着""该睡了"。');
+      b.writeln('- 饭点(11-13点、17-19点)才聊吃，非饭点不提。');
+      b.writeln('- 周末语气放松，工作日默认对方可能在忙。');
+      b.writeln('- 绝不发和当前时间冲突的内容（如下午说早安、大清早说晚安）。');
     }
 
     if (memoryBlock != null && memoryBlock.trim().isNotEmpty) {

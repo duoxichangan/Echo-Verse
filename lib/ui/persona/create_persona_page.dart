@@ -142,7 +142,7 @@ class _CreatePersonaPageState extends ConsumerState<CreatePersonaPage> {
           labelText: label,
           hintText: hint,
           filled: true,
-          fillColor: Colors.white,
+          fillColor: WeChat.inputFieldBg,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: const BorderSide(color: WeChat.divider),

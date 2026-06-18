@@ -143,7 +143,7 @@ class _MemoryPanelPageState extends ConsumerState<MemoryPanelPage> {
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: WeChat.bg,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -189,7 +189,7 @@ class _MemoryPanelPageState extends ConsumerState<MemoryPanelPage> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: WeChat.bg,
         borderRadius: BorderRadius.circular(8),
       ),
       child: ListTile(

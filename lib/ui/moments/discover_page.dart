@@ -48,7 +48,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: WeChat.bg,
       appBar: AppBar(
         backgroundColor: WeChat.barBg,
         foregroundColor: WeChat.textPrimary,

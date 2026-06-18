@@ -76,7 +76,7 @@ class _MePageState extends ConsumerState<MePage> {
                 const SizedBox(height: 40),
                 // 个人信息卡。
                 Container(
-                  color: Colors.white,
+                  color: WeChat.bg,
                   padding: const EdgeInsets.all(20),
                   child: Row(
                     children: [
@@ -110,7 +110,7 @@ class _MePageState extends ConsumerState<MePage> {
                 ),
                 const SizedBox(height: 12),
                 Container(
-                  color: Colors.white,
+                  color: WeChat.bg,
                   child: ListTile(
                     leading: const Icon(Icons.settings_outlined, color: WeChat.brand),
                     title: const Text('设置'),

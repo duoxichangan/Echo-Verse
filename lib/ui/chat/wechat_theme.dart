@@ -19,8 +19,8 @@ class WeChat {
   /// 自己气泡（微信绿）。
   static const bubbleOut = Color(0xFF95EC69);
 
-  /// 输入框白底。
-  static const inputFieldBg = Color(0xFFFFFFFF);
+  /// 输入框底色（微信浅灰）。
+  static const inputFieldBg = Color(0xFFF7F7F7);
 
   /// 主文字色（近黑）。
   static const textPrimary = Color(0xFF191919);

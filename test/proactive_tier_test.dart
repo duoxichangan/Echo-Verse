@@ -8,6 +8,8 @@ void main() {
       expect(ProactiveTier.occasional.isOn, isTrue);
       expect(ProactiveTier.normal.isOn, isTrue);
       expect(ProactiveTier.frequent.isOn, isTrue);
+      expect(ProactiveTier.chatty.isOn, isTrue);
+      expect(ProactiveTier.superChatty.isOn, isTrue);
     });
 
     test('间隔随档位递减（越频繁间隔越短）', () {
@@ -16,7 +18,11 @@ void main() {
           greaterThan(ProactiveTier.normal.avgGapHours));
       expect(ProactiveTier.normal.avgGapHours,
           greaterThan(ProactiveTier.frequent.avgGapHours));
-      expect(ProactiveTier.frequent.avgGapHours, greaterThan(0));
+      expect(ProactiveTier.frequent.avgGapHours,
+          greaterThan(ProactiveTier.chatty.avgGapHours));
+      expect(ProactiveTier.chatty.avgGapHours,
+          greaterThan(ProactiveTier.superChatty.avgGapHours));
+      expect(ProactiveTier.superChatty.avgGapHours, greaterThan(0));
     });
 
     test('fromIndex 往返一致，越界回退 off', () {

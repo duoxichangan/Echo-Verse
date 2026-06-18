@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/di/providers.dart';
 import '../../main.dart' show runProactiveBootstrap;
 import '../home/home_page.dart';
 import '../me/me_page.dart';
@@ -41,6 +42,9 @@ class _MainShellState extends ConsumerState<MainShell>
 
   @override
   Widget build(BuildContext context) {
+    final unreads = ref.watch(unreadNotifierProvider);
+    final unreadTotal = unreads.values.fold(0, (int a, int b) => a + b);
+
     // 直接渲染当前页（切 Tab 即重建），保证发现页每次切入都刷新朋友圈。
     final pages = const [HomePage(), DiscoverPage(), MePage()];
     return Scaffold(
@@ -53,12 +57,20 @@ class _MainShellState extends ConsumerState<MainShell>
         selectedItemColor: WeChat.brand,
         unselectedItemColor: const Color(0xFF7A7A7A),
         showUnselectedLabels: true,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble), label: '微信'),
-          BottomNavigationBarItem(
+            icon: unreadTotal > 0
+                ? Badge(
+                    label: Text(unreadTotal > 99 ? '99+' : '$unreadTotal'),
+                    child: const Icon(Icons.chat_bubble),
+                  )
+                : const Icon(Icons.chat_bubble),
+            label: 'Ta们',
+          ),
+          const BottomNavigationBarItem(
               icon: Icon(Icons.explore_outlined), label: '发现'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: '我'),
+          const BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline), label: '我'),
         ],
       ),
     );
