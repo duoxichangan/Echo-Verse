@@ -278,7 +278,7 @@ class _PersonaEditorPageState extends ConsumerState<PersonaEditorPage> {
   InputDecoration _dec(String hint) => InputDecoration(
         hintText: hint,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: WeChat.inputFieldBg,
         isDense: true,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),

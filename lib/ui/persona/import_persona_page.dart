@@ -258,7 +258,7 @@ class _ImportPersonaPageState extends ConsumerState<ImportPersonaPage> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: WeChat.bg,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -298,7 +298,7 @@ class _ImportPersonaPageState extends ConsumerState<ImportPersonaPage> {
           labelText: label,
           hintText: hint,
           filled: true,
-          fillColor: Colors.white,
+          fillColor: WeChat.inputFieldBg,
           isDense: true,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),

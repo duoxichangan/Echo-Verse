@@ -55,7 +55,7 @@ class _MainShellState extends ConsumerState<MainShell>
         showUnselectedLabels: true,
         items: const [
           BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble), label: '微信'),
+              icon: Icon(Icons.chat_bubble), label: 'Ta们'),
           BottomNavigationBarItem(
               icon: Icon(Icons.explore_outlined), label: '发现'),
           BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: '我'),
